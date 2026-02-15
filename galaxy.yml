@@ -1,0 +1,11 @@
+---
+namespace: reenchree
+name: common
+version: 1.0.0
+readme: README.md
+authors:
+  - Chris <chris@reenchree.dev>
+description: Shared Ansible roles for the reenchree homelab infrastructure
+license:
+  - MIT
+repository: https://github.com/reenchree/reenchree-ansible-common
