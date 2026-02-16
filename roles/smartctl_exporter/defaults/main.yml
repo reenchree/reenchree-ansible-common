@@ -1,0 +1,4 @@
+---
+smartctl_exporter_version: "0.14.0"
+smartctl_exporter_listen_address: "0.0.0.0:9633"
+smartctl_exporter_smartctl_interval: "300s"
