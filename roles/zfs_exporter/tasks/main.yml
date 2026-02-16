@@ -59,7 +59,7 @@
       Wants=network-online.target
 
       [Service]
-      ExecStart=/usr/local/bin/zfs_exporter --web.listen-address={{ zfs_exporter_listen_address }}
+      ExecStart=/usr/local/bin/zfs_exporter --web.listen-address={{ zfs_exporter_listen_address }}{{ ' ' + zfs_exporter_extra_args if zfs_exporter_extra_args else '' }}
       Restart=on-failure
       RestartSec=5
       ProtectSystem=full
