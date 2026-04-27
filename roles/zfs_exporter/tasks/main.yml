@@ -5,7 +5,8 @@
   register: zfs_exporter_bin
 
 - name: Get installed zfs_exporter version
-  ansible.builtin.command: /usr/local/bin/zfs_exporter --version
+  ansible.builtin.shell:
+    cmd: "/usr/local/bin/zfs_exporter --version 2>&1"
   register: zfs_exporter_installed_version
   changed_when: false
   failed_when: false
