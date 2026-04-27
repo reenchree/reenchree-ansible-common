@@ -1,0 +1,28 @@
+# Managed by Ansible — do not edit manually
+#
+# Snapshot templates:
+#   frequent — 15-min snapshots (2 hrs), hourly (48), daily (30), monthly (12)
+#   daily    — daily (30), monthly (6)
+#   none     — skipped (no section generated)
+
+[template_frequent]
+frequently = 8
+hourly = 48
+daily = 30
+monthly = 12
+autosnap = yes
+autoprune = yes
+
+[template_daily]
+frequently = 0
+hourly = 0
+daily = 30
+monthly = 6
+autosnap = yes
+autoprune = yes
+
+{% for dataset in zfs_datasets | selectattr('snapshots', 'ne', 'none') %}
+[{{ zfs_pool_name }}/{{ dataset.name }}]
+use_template = {{ dataset.snapshots }}
+
+{% endfor %}

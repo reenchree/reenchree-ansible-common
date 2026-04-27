@@ -1,0 +1,32 @@
+---
+- name: Install base system packages
+  ansible.builtin.apt:
+    name: "{{ base_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure pi user has sudo access
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: sudo
+    append: true
+
+- name: Configure smartd to monitor all disks
+  ansible.builtin.copy:
+    content: |
+      # NVMe drives run hotter - use higher thresholds (diff=4, warn=50, crit=70)
+      /dev/nvme0 -a -o on -S on -n standby,q -s (S/../.././02|L/../../6/03) -W 4,50,70 -m root
+      # All other devices (spinning disks)
+      DEVICESCAN -a -o on -S on -n standby,q -s (S/../.././02|L/../../6/03) -W 4,35,40 -m root
+    dest: /etc/smartd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart smartd
+
+- name: Enable and start smartd service
+  ansible.builtin.systemd:
+    name: smartd
+    enabled: true
+    state: started

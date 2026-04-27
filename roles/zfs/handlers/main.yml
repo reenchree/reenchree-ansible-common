@@ -1,0 +1,8 @@
+---
+- name: reload zfs module params
+  ansible.builtin.shell:
+    cmd: "echo {{ zfs_arc_max_gb * 1073741824 }} > /sys/module/zfs/parameters/zfs_arc_max"
+
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true

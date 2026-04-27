@@ -1,0 +1,6 @@
+---
+zfs_pool_name: tank
+zfs_pool_type: raidz2
+zfs_disks: []
+zfs_arc_max_gb: 8
+zfs_datasets: []

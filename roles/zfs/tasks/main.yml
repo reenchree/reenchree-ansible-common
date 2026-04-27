@@ -1,0 +1,135 @@
+---
+- name: Enable contrib repository for ZFS
+  ansible.builtin.replace:
+    path: /etc/apt/sources.list
+    regexp: '^(deb(?:-src)?\s+http://deb\.debian\.org/debian/\s+\S+\s+main(?!.*\bcontrib\b))(.*)'
+    replace: '\1 contrib\2'
+
+- name: Install ZFS packages
+  ansible.builtin.apt:
+    name:
+      - linux-headers-amd64
+      - zfsutils-linux
+    state: present
+    update_cache: true
+
+- name: Load ZFS kernel module
+  community.general.modprobe:
+    name: zfs
+    state: present
+
+- name: Configure ZFS ARC max size
+  ansible.builtin.copy:
+    content: "options zfs zfs_arc_max={{ zfs_arc_max_gb * 1073741824 }}\n"
+    dest: /etc/modprobe.d/zfs.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload zfs module params
+
+- name: Check if ZFS pool already exists
+  ansible.builtin.command:
+    cmd: zpool list {{ zfs_pool_name }}
+  register: zpool_check
+  changed_when: false
+  failed_when: false
+
+- name: Validate ZFS disk configuration
+  ansible.builtin.assert:
+    that:
+      - zfs_disks | length >= 4
+    fail_msg: "zfs_disks must contain at least 4 disks for raidz2"
+  when: zpool_check.rc != 0
+
+- name: Verify disk paths exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: disk_check
+  loop: "{{ zfs_disks }}"
+  when: zpool_check.rc != 0
+
+- name: Fail if any disk path is missing
+  ansible.builtin.fail:
+    msg: "Disk not found: {{ item.item }}"
+  loop: "{{ disk_check.results | default([]) }}"
+  when:
+    - zpool_check.rc != 0
+    - not item.stat.exists
+
+- name: Create ZFS pool
+  ansible.builtin.command:
+    cmd: >
+      zpool create
+      -o ashift=12
+      {{ zfs_pool_name }} {{ zfs_pool_type }}
+      {{ zfs_disks | join(' ') }}
+  when: zpool_check.rc != 0
+
+- name: Set pool properties
+  community.general.zfs:
+    name: "{{ zfs_pool_name }}"
+    state: present
+    extra_zfs_properties:
+      compression: lz4
+      atime: "off"
+      xattr: sa
+      acltype: posixacl
+
+- name: Create ZFS datasets
+  community.general.zfs:
+    name: "{{ zfs_pool_name }}/{{ item.name }}"
+    state: present
+    extra_zfs_properties:
+      quota: "{{ item.quota }}"
+      compression: "{{ item.compression }}"
+      recordsize: "{{ item.recordsize }}"
+  loop: "{{ zfs_datasets }}"
+
+- name: Create ZFS scrub service
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=ZFS scrub for %i
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/sbin/zpool scrub %i
+    dest: /etc/systemd/system/zfs-scrub-monthly@.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+
+- name: Create monthly scrub timer
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Monthly ZFS scrub for {{ zfs_pool_name }}
+
+      [Timer]
+      OnCalendar=monthly
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+    dest: /etc/systemd/system/zfs-scrub-monthly@.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+
+- name: Enable monthly ZFS scrub timer
+  ansible.builtin.systemd:
+    name: zfs-scrub-monthly@{{ zfs_pool_name }}.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable ZFS import services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+  loop:
+    - zfs-import-cache.service
+    - zfs-mount.service
+    - zfs-import.target
