@@ -1,7 +1,8 @@
 ---
 node_exporter_listen_address: "0.0.0.0:9100"
 # Extra CLI flags appended to ARGS. Default enables per-unit start-time
-# metrics (`node_systemd_unit_start_time_seconds`) which we use for
-# alerting on stale systemd units (e.g. SyncoidStale). Override to add
-# more or to opt out of the start-time metric.
+# metrics (`node_systemd_unit_start_time_seconds`) which the
+# `SyncoidStale` alert in sea-k8s-flux/infra/kube-prom-stack/custom-alerts.yaml
+# depends on. Disabling this flag silences that alert without warning,
+# so check the alert's PromQL before changing this default.
 node_exporter_extra_args: "--collector.systemd.enable-start-time-metrics"

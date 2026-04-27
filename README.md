@@ -24,7 +24,11 @@ Creates and configures a ZFS pool plus its datasets. Enables the contrib reposit
 
 ### `reenchree.common.sanoid`
 
-Installs sanoid and templates `/etc/sanoid/sanoid.conf` based on the `zfs_datasets` list (uses each dataset's `snapshots` key to pick a template). Provides `frequent` (15-min/hourly/daily/monthly) and `daily` (daily/monthly) templates by default.
+Installs sanoid and templates `/etc/sanoid/sanoid.conf` based on the `zfs_datasets` list (uses each dataset's `snapshots` key to pick a template). Built-in templates (assignable via the dataset's `snapshots:` key):
+- `frequent` — 15-min snapshots (8 retained), hourly (48), daily (30), monthly (12)
+- `daily` — daily (30), monthly (6)
+- `receive_only` — daily (30), monthly (6), but `autosnap=no` so the local sanoid does not create snapshots. Use on the destination side of a syncoid replication so the receive lineage stays intact.
+- `none` — dataset is omitted from sanoid.conf (no snapshots managed)
 
 ### `reenchree.common.node_exporter`
 
@@ -32,6 +36,7 @@ Installs and configures Prometheus node_exporter via apt.
 
 **Default variables:**
 - `node_exporter_listen_address`: `0.0.0.0:9100`
+- `node_exporter_extra_args`: `--collector.systemd.enable-start-time-metrics` (enables `node_systemd_unit_start_time_seconds`; required by the `SyncoidStale` alert in sea-k8s-flux)
 
 ### `reenchree.common.zfs_exporter`
 

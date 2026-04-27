@@ -6,7 +6,7 @@
     update_cache: true
     cache_valid_time: 3600
 
-- name: Ensure pi user has sudo access
+- name: Ensure ansible_user is in the sudo group
   ansible.builtin.user:
     name: "{{ ansible_user }}"
     groups: sudo
