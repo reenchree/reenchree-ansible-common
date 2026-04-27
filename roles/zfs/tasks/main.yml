@@ -87,14 +87,52 @@
       xattr: sa
       acltype: posixacl
 
+# Datasets that declare an `encryption` block need their keyfile
+# present on disk BEFORE the dataset is created (zfs create reads it
+# at creation; encryption properties can't be added later).
+- name: Ensure /etc/zfs-keys directory for encrypted datasets
+  ansible.builtin.file:
+    path: /etc/zfs-keys
+    owner: root
+    group: root
+    mode: "0700"
+    state: directory
+  when: zfs_datasets | selectattr('encryption', 'defined') | list | length > 0
+
+- name: Drop ZFS dataset encryption keys
+  ansible.builtin.copy:
+    content: "{{ item.encryption.key_content }}"
+    dest: "{{ item.encryption.keylocation | regex_replace('^file://', '') }}"
+    owner: root
+    group: root
+    mode: "0400"
+  loop: "{{ zfs_datasets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - item.encryption is defined
+    - item.encryption.key_content | default('') | length > 0
+  no_log: true
+
 - name: Create ZFS datasets
   community.general.zfs:
     name: "{{ zfs_pool_name }}/{{ item.name }}"
     state: present
-    extra_zfs_properties:
-      quota: "{{ item.quota }}"
-      compression: "{{ item.compression }}"
-      recordsize: "{{ item.recordsize }}"
+    # Static props are quota/compression/recordsize. If the dataset
+    # declares an encryption block (cipher/keyformat/keylocation), it
+    # gets merged in here — required for `zfs create` to set encryption,
+    # and idempotent on subsequent runs because the values match.
+    extra_zfs_properties: >-
+      {{
+        {'quota': item.quota, 'compression': item.compression, 'recordsize': item.recordsize}
+        | combine(
+            {
+              'encryption': item.encryption.cipher,
+              'keyformat': item.encryption.keyformat,
+              'keylocation': item.encryption.keylocation,
+            } if item.encryption is defined else {}
+          )
+      }}
   loop: "{{ zfs_datasets }}"
 
 - name: Create ZFS scrub service

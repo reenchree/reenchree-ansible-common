@@ -20,7 +20,7 @@ Creates and configures a ZFS pool plus its datasets. Enables the contrib reposit
 - `zfs_pool_type`: `raidz2` (also accepts `mirror`, `stripe`, `raidz`, `raidz3`)
 - `zfs_disks`: list of `/dev/disk/by-id/...` paths (required)
 - `zfs_arc_max_gb`: `8`
-- `zfs_datasets`: list of `{name, quota, compression, recordsize, snapshots}` dicts
+- `zfs_datasets`: list of dicts with required keys `{name, quota, compression, recordsize, snapshots}`. Optional key `encryption: {cipher, keyformat, keylocation, key_content}` enables ZFS native encryption — the role drops the key at `keylocation` (mode 0400) and creates the dataset with encryption properties. Note: encryption properties can only be set at dataset creation; modifying after creation is a destroy + recreate.
 
 ### `reenchree.common.sanoid`
 
