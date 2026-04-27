@@ -35,10 +35,22 @@
   failed_when: false
 
 - name: Validate ZFS disk configuration
+  vars:
+    zfs_min_disks:
+      stripe: 1
+      mirror: 2
+      raidz: 3
+      raidz1: 3
+      raidz2: 4
+      raidz3: 5
+    zfs_required_min: "{{ zfs_min_disks[zfs_pool_type] | default(2) }}"
   ansible.builtin.assert:
     that:
-      - zfs_disks | length >= 4
-    fail_msg: "zfs_disks must contain at least 4 disks for raidz2"
+      - zfs_pool_type in zfs_min_disks
+      - zfs_disks | length >= (zfs_required_min | int)
+    fail_msg: >-
+      zfs_pool_type={{ zfs_pool_type }} requires at least
+      {{ zfs_required_min }} disk(s); got {{ zfs_disks | length }}.
   when: zpool_check.rc != 0
 
 - name: Verify disk paths exist
