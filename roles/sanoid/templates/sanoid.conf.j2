@@ -1,9 +1,13 @@
 # Managed by Ansible — do not edit manually
 #
 # Snapshot templates:
-#   frequent — 15-min snapshots (2 hrs), hourly (48), daily (30), monthly (12)
-#   daily    — daily (30), monthly (6)
-#   none     — skipped (no section generated)
+#   frequent      — 15-min snapshots (2 hrs), hourly (48), daily (30), monthly (12)
+#   daily         — daily (30), monthly (6)
+#   receive_only  — same retention as daily, but autosnap=no
+#                   (use on syncoid replication destinations so the local
+#                   sanoid doesn't create snapshots that would diverge from
+#                   the source's lineage and break incremental sends)
+#   none          — skipped (no section generated)
 
 [template_frequent]
 frequently = 8
@@ -19,6 +23,14 @@ hourly = 0
 daily = 30
 monthly = 6
 autosnap = yes
+autoprune = yes
+
+[template_receive_only]
+frequently = 0
+hourly = 0
+daily = 30
+monthly = 6
+autosnap = no
 autoprune = yes
 
 {% for dataset in zfs_datasets | selectattr('snapshots', 'ne', 'none') %}
