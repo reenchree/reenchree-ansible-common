@@ -5,7 +5,8 @@
   register: smartctl_exporter_bin
 
 - name: Get installed smartctl_exporter version
-  ansible.builtin.command: /usr/local/bin/smartctl_exporter --version
+  ansible.builtin.shell:
+    cmd: "/usr/local/bin/smartctl_exporter --version 2>&1"
   register: smartctl_exporter_installed_version
   changed_when: false
   failed_when: false
