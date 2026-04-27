@@ -4,3 +4,17 @@ zfs_pool_type: raidz2
 zfs_disks: []
 zfs_arc_max_gb: 8
 zfs_datasets: []
+
+# Optional pool-level native ZFS encryption. When defined, the role drops
+# the keyfile at `keylocation` (mode 0400) and adds matching `-O` flags
+# to `zpool create`. Children of the pool inherit encryption — including
+# datasets later created by `zfs receive` (e.g. syncoid). Encryption can
+# only be set at pool creation, so changing this on an existing pool is
+# a destroy-and-recreate.
+#
+# Example:
+#   zfs_pool_encryption:
+#     cipher: aes-256-gcm
+#     keyformat: hex
+#     keylocation: file:///etc/zfs-keys/tank.key
+#     key_content: "{{ vault_zfs_pool_key }}"

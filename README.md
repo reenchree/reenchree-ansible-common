@@ -20,7 +20,8 @@ Creates and configures a ZFS pool plus its datasets. Enables the contrib reposit
 - `zfs_pool_type`: `raidz2` (also accepts `mirror`, `stripe`, `raidz`, `raidz3`)
 - `zfs_disks`: list of `/dev/disk/by-id/...` paths (required)
 - `zfs_arc_max_gb`: `8`
-- `zfs_datasets`: list of dicts with required keys `{name, quota, compression, recordsize, snapshots}`. Optional key `encryption: {cipher, keyformat, keylocation, key_content}` enables ZFS native encryption — the role drops the key at `keylocation` (mode 0400) and creates the dataset with encryption properties. Note: encryption properties can only be set at dataset creation; modifying after creation is a destroy + recreate.
+- `zfs_datasets`: list of dicts with required keys `{name, quota, compression, recordsize, snapshots}`. Optional key `encryption: {cipher, keyformat, keylocation, key_content}` enables per-dataset ZFS native encryption — the role drops the key at `keylocation` (mode 0400) and creates the dataset with encryption properties. Note: encryption properties can only be set at dataset creation; modifying after creation is a destroy + recreate.
+- `zfs_pool_encryption` (optional): `{cipher, keyformat, keylocation, key_content}` block. When set, encryption is applied at the **pool** level (`zpool create -O ...`) so every dataset in the pool inherits it — including datasets later created by `zfs receive` (e.g. via syncoid). Use this when you want the entire pool encrypted with a single key. Pool-level encryption can only be set at pool creation; changing it after the fact requires destroying and recreating the pool.
 
 ### `reenchree.common.sanoid`
 

@@ -68,11 +68,47 @@
     - zpool_check.rc != 0
     - not item.stat.exists
 
+# Pool-level encryption keyfile must exist before `zpool create` reads it.
+# Done in the same `when: zpool_check.rc != 0` band as pool creation so it
+# only runs when we're actually about to create the pool.
+- name: Ensure /etc/zfs-keys directory for pool encryption
+  ansible.builtin.file:
+    path: /etc/zfs-keys
+    owner: root
+    group: root
+    mode: "0700"
+    state: directory
+  when:
+    - zpool_check.rc != 0
+    - zfs_pool_encryption is defined
+
+- name: Drop ZFS pool encryption key
+  ansible.builtin.copy:
+    content: "{{ zfs_pool_encryption.key_content }}"
+    dest: "{{ zfs_pool_encryption.keylocation | regex_replace('^file://', '') }}"
+    owner: root
+    group: root
+    mode: "0400"
+  when:
+    - zpool_check.rc != 0
+    - zfs_pool_encryption is defined
+    - zfs_pool_encryption.key_content | default('') | length > 0
+  no_log: true
+
+# When zfs_pool_encryption is defined, append -O flags to set encryption
+# at pool creation. Children of `tank` then inherit encryption automatically,
+# so any dataset later created by zfs_datasets OR by syncoid's `zfs receive`
+# is encrypted without per-dataset config.
 - name: Create ZFS pool
   ansible.builtin.command:
     cmd: >
       zpool create
       -o ashift=12
+      {% if zfs_pool_encryption is defined %}
+      -O encryption={{ zfs_pool_encryption.cipher }}
+      -O keyformat={{ zfs_pool_encryption.keyformat }}
+      -O keylocation={{ zfs_pool_encryption.keylocation }}
+      {% endif %}
       {{ zfs_pool_name }} {{ zfs_pool_type }}
       {{ zfs_disks | join(' ') }}
   when: zpool_check.rc != 0
