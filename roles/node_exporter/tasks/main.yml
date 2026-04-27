@@ -9,7 +9,7 @@
 - name: Configure node_exporter defaults
   ansible.builtin.copy:
     content: |
-      ARGS="--web.listen-address={{ node_exporter_listen_address }}"
+      ARGS="--web.listen-address={{ node_exporter_listen_address }}{{ ' ' + node_exporter_extra_args if node_exporter_extra_args else '' }}"
     dest: /etc/default/prometheus-node-exporter
     owner: root
     group: root
