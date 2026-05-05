@@ -1,0 +1,7 @@
+# Managed by Ansible (reenchree.common.nut_server) — do not edit manually
+{% for rule in nut_server_udev_rules %}
+{% if rule.comment is defined %}
+# {{ rule.comment }}
+{% endif %}
+SUBSYSTEM=="usb", ATTR{idVendor}=="{{ rule.vendorid | lower }}", ATTR{idProduct}=="{{ rule.productid | lower }}", MODE="0660", GROUP="nut"
+{% endfor %}

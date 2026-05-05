@@ -1,0 +1,49 @@
+---
+# nut.conf
+nut_server_mode: netserver
+
+# upsd.conf
+nut_server_listen_address: "0.0.0.0"
+nut_server_listen_port: 3493
+
+# ups.conf
+nut_server_maxretry: 3
+# List of UPSes; each becomes a [stanza] in /etc/nut/ups.conf.
+# Required keys per entry: name, driver. Optional: port, vendorid, productid,
+# serial, description, pollinterval, plus any other key the driver accepts
+# (rendered verbatim as `key = value`).
+nut_server_upses: []
+
+# upsd.users
+# List of users; each becomes a [stanza] in /etc/nut/upsd.users.
+# Required keys per entry: name, password.
+# Optional: actions (list — repeated as multiple `actions =` lines per NUT's
+# additive semantics), instcmds (list, same), upsmon ("primary" | "secondary").
+nut_server_users: []
+
+# upsmon.conf
+nut_server_upsmon_minsupplies: 1
+nut_server_upsmon_shutdowncmd: "/sbin/shutdown -h +0"
+nut_server_upsmon_pollfreq: 5
+nut_server_upsmon_pollfreqalert: 5
+nut_server_upsmon_hostsync: 15
+nut_server_upsmon_deadtime: 15
+nut_server_upsmon_powerdownflag: /etc/killpower
+nut_server_upsmon_rbwarntime: 43200
+nut_server_upsmon_nocommwarntime: 300
+nut_server_upsmon_finaldelay: 5
+# MONITOR line. `user` and `password` must match an entry in nut_server_users.
+# `ups` is `<upsname>@<host>` — typically the local socket via @localhost.
+nut_server_upsmon_monitor:
+  ups: ""
+  powervalue: 1
+  user: ""
+  password: ""
+  type: primary
+
+# /etc/udev/rules.d/99-nut-ups.rules — opt-in. Empty means the file isn't
+# managed and any existing rule is left in place. NUT's stock systemd units
+# run as root so a udev rule is only needed if you also run drivers as the
+# `nut` user (rare for local hosts).
+nut_server_udev_rules: []
+# Each entry: { vendorid, productid, comment? }

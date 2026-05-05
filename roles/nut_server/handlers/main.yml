@@ -1,0 +1,28 @@
+---
+- name: reload udev
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: true
+  listen: reload udev
+
+- name: trigger udev
+  ansible.builtin.command: udevadm trigger --subsystem-match=usb
+  changed_when: true
+  listen: reload udev
+
+- name: restart nut-driver-enumerator
+  ansible.builtin.systemd:
+    name: nut-driver-enumerator
+    state: restarted
+    daemon_reload: true
+
+- name: restart nut-server
+  ansible.builtin.systemd:
+    name: nut-server
+    state: restarted
+    daemon_reload: true
+
+- name: restart nut-monitor
+  ansible.builtin.systemd:
+    name: nut-monitor
+    state: restarted
+    daemon_reload: true

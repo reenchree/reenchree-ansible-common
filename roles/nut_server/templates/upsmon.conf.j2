@@ -1,0 +1,12 @@
+{# Managed by Ansible (reenchree.common.nut_server) — do not edit manually #}
+MINSUPPLIES {{ nut_server_upsmon_minsupplies }}
+SHUTDOWNCMD "{{ nut_server_upsmon_shutdowncmd }}"
+POLLFREQ {{ nut_server_upsmon_pollfreq }}
+POLLFREQALERT {{ nut_server_upsmon_pollfreqalert }}
+HOSTSYNC {{ nut_server_upsmon_hostsync }}
+DEADTIME {{ nut_server_upsmon_deadtime }}
+POWERDOWNFLAG {{ nut_server_upsmon_powerdownflag }}
+RBWARNTIME {{ nut_server_upsmon_rbwarntime }}
+NOCOMMWARNTIME {{ nut_server_upsmon_nocommwarntime }}
+FINALDELAY {{ nut_server_upsmon_finaldelay }}
+MONITOR {{ nut_server_upsmon_monitor.ups }} {{ nut_server_upsmon_monitor.powervalue }} {{ nut_server_upsmon_monitor.user }} {{ nut_server_upsmon_monitor.password }} {{ nut_server_upsmon_monitor.type }}

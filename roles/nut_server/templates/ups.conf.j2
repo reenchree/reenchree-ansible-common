@@ -1,0 +1,19 @@
+{# Managed by Ansible (reenchree.common.nut_server) — do not edit manually #}
+{# Standard NUT keys are emitted first in this fixed order so renders are
+   stable across hosts (matches sagitta's hand-rolled file). Any extra keys
+   (driver-specific knobs) are appended after, in dict-iteration order. #}
+{% set _ordered_keys = ['driver', 'port', 'vendorid', 'productid', 'serial', 'description', 'pollinterval'] -%}
+maxretry = {{ nut_server_maxretry }}
+{% for ups in nut_server_upses %}
+[{{ ups.name }}]
+{%   for key in _ordered_keys if key in ups %}
+{%     if key == 'description' %}
+  desc = "{{ ups[key] }}"
+{%     else %}
+  {{ key }} = {{ ups[key] }}
+{%     endif %}
+{%   endfor %}
+{%   for key, value in ups.items() if key not in _ordered_keys + ['name'] %}
+  {{ key }} = {{ value }}
+{%   endfor %}
+{% endfor %}

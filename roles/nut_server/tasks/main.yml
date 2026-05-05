@@ -1,0 +1,83 @@
+---
+- name: Install nut
+  ansible.builtin.apt:
+    name: nut
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    update_cache_retries: 10
+    update_cache_retry_max_delay: 60
+    lock_timeout: 300
+
+- name: Configure nut.conf
+  ansible.builtin.template:
+    src: nut.conf.j2
+    dest: /etc/nut/nut.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - restart nut-server
+    - restart nut-monitor
+
+- name: Configure ups.conf
+  ansible.builtin.template:
+    src: ups.conf.j2
+    dest: /etc/nut/ups.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - restart nut-driver-enumerator
+    - restart nut-server
+
+- name: Configure upsd.conf
+  ansible.builtin.template:
+    src: upsd.conf.j2
+    dest: /etc/nut/upsd.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify: restart nut-server
+
+- name: Configure upsd.users
+  ansible.builtin.template:
+    src: upsd.users.j2
+    dest: /etc/nut/upsd.users
+    owner: root
+    group: nut
+    mode: "0640"
+  no_log: true
+  notify: restart nut-server
+
+- name: Configure upsmon.conf
+  ansible.builtin.template:
+    src: upsmon.conf.j2
+    dest: /etc/nut/upsmon.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  no_log: true
+  notify: restart nut-monitor
+
+- name: Configure NUT USB udev rules
+  ansible.builtin.template:
+    src: 99-nut-ups.rules.j2
+    dest: /etc/udev/rules.d/99-nut-ups.rules
+    owner: root
+    group: root
+    mode: "0644"
+  when: nut_server_udev_rules | length > 0
+  notify: reload udev
+
+- name: Enable and start nut-server
+  ansible.builtin.systemd:
+    name: nut-server
+    enabled: true
+    state: started
+
+- name: Enable and start nut-monitor
+  ansible.builtin.systemd:
+    name: nut-monitor
+    enabled: true
+    state: started
