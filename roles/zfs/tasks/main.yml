@@ -150,14 +150,23 @@
     - item.encryption.key_content | default('') | length > 0
   no_log: true
 
+- name: List existing ZFS datasets
+  ansible.builtin.command:
+    cmd: zfs list -H -o name
+  register: zfs_existing_datasets
+  changed_when: false
+
 - name: Create ZFS datasets
   community.general.zfs:
     name: "{{ zfs_pool_name }}/{{ item.name }}"
     state: present
     # Static props are quota/compression/recordsize. If the dataset
     # declares an encryption block (cipher/keyformat/keylocation), it
-    # gets merged in here — required for `zfs create` to set encryption,
-    # and idempotent on subsequent runs because the values match.
+    # gets merged in ONLY at creation time: encryption props are
+    # creation-only in ZFS, and attempting `zfs set encryption=...` on a
+    # pre-existing (e.g. not-yet-migrated, unencrypted) dataset fails.
+    # Skipping the merge for existing datasets keeps the role idempotent
+    # whether a declared-encrypted dataset has been migrated yet or not.
     extra_zfs_properties: >-
       {{
         {'quota': item.quota, 'compression': item.compression, 'recordsize': item.recordsize}
@@ -166,7 +175,9 @@
               'encryption': item.encryption.cipher,
               'keyformat': item.encryption.keyformat,
               'keylocation': item.encryption.keylocation,
-            } if item.encryption is defined else {}
+            } if (item.encryption is defined
+                  and (zfs_pool_name ~ '/' ~ item.name) not in zfs_existing_datasets.stdout_lines)
+            else {}
           )
       }}
   loop: "{{ zfs_datasets }}"
