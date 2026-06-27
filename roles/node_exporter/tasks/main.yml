@@ -6,10 +6,19 @@
     update_cache: true
     cache_valid_time: 3600
 
+- name: Ensure node_exporter textfile collector directory
+  ansible.builtin.file:
+    path: "{{ node_exporter_textfile_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: node_exporter_textfile_directory | length > 0
+
 - name: Configure node_exporter defaults
   ansible.builtin.copy:
     content: |
-      ARGS="--web.listen-address={{ node_exporter_listen_address }}{{ ' ' + node_exporter_extra_args if node_exporter_extra_args else '' }}"
+      ARGS="--web.listen-address={{ node_exporter_listen_address }}{{ ' --collector.textfile.directory=' + node_exporter_textfile_directory if node_exporter_textfile_directory else '' }}{{ ' ' + node_exporter_extra_args if node_exporter_extra_args else '' }}"
     dest: /etc/default/prometheus-node-exporter
     owner: root
     group: root

@@ -222,6 +222,90 @@
     state: started
     daemon_reload: true
 
+# ZFS vdev-error + scrub health metrics for the node_exporter textfile
+# collector (see defaults/main.yml). Closes the gap that pdf/zfs_exporter
+# leaves uncovered. node_exporter must have --collector.textfile.directory
+# pointed at zfs_health_metrics_dir (the node_exporter role does this by
+# default at the same path).
+- name: Install jq (ZFS health metrics dependency)
+  ansible.builtin.apt:
+    name: jq
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: zfs_health_metrics_enabled
+
+- name: Ensure node_exporter textfile collector directory exists
+  ansible.builtin.file:
+    path: "{{ zfs_health_metrics_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: zfs_health_metrics_enabled
+
+- name: Install ZFS health-metrics collector script
+  ansible.builtin.copy:
+    src: zfs-health-metrics.sh
+    dest: /usr/local/bin/zfs-health-metrics.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: zfs_health_metrics_enabled
+
+- name: Install ZFS health-metrics service
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Export ZFS vdev/scrub health metrics for node_exporter
+      After=zfs-import.target
+      Wants=zfs-import.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/zfs-health-metrics.sh {{ zfs_health_metrics_dir }}
+    dest: /etc/systemd/system/zfs-health-metrics.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+  when: zfs_health_metrics_enabled
+
+- name: Install ZFS health-metrics timer
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description=Periodic ZFS vdev/scrub health metrics export
+
+      [Timer]
+      OnBootSec=3min
+      OnUnitActiveSec={{ zfs_health_metrics_interval }}
+      AccuracySec=30s
+
+      [Install]
+      WantedBy=timers.target
+    dest: /etc/systemd/system/zfs-health-metrics.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+  when: zfs_health_metrics_enabled
+
+- name: Enable ZFS health-metrics timer
+  ansible.builtin.systemd:
+    name: zfs-health-metrics.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: zfs_health_metrics_enabled
+
+# Populate metrics immediately so they don't wait for the first timer tick.
+- name: Generate ZFS health metrics now
+  ansible.builtin.command:
+    cmd: /usr/local/bin/zfs-health-metrics.sh {{ zfs_health_metrics_dir }}
+  changed_when: false
+  when: zfs_health_metrics_enabled
+
 - name: Enable ZFS import services
   ansible.builtin.systemd:
     name: "{{ item }}"

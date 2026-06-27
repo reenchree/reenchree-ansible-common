@@ -13,13 +13,16 @@ Installs baseline system packages (smartmontools, lm-sensors, htop, iotop-c, tmu
 
 ### `reenchree.common.zfs`
 
-Creates and configures a ZFS pool plus its datasets. Enables the contrib repository, installs `zfsutils-linux` + headers, sets ARC max, creates the pool with `ashift=12`, applies pool/dataset properties (compression, atime, xattr, recordsize, quota), and installs a monthly scrub timer.
+Creates and configures a ZFS pool plus its datasets. Enables the contrib repository, installs `zfsutils-linux` + headers, sets ARC max, creates the pool with `ashift=12`, applies pool/dataset properties (compression, atime, xattr, recordsize, quota), installs a monthly scrub timer, and (optionally) a node_exporter textfile collector for ZFS vdev-error + scrub health metrics.
 
 **Default variables:**
 - `zfs_pool_name`: `tank`
 - `zfs_pool_type`: `raidz2` (also accepts `mirror`, `stripe`, `raidz`, `raidz3`)
 - `zfs_disks`: list of `/dev/disk/by-id/...` paths (required)
 - `zfs_arc_max_gb`: `8`
+- `zfs_health_metrics_enabled`: `true`. Installs `jq` + `/usr/local/bin/zfs-health-metrics.sh` and a systemd timer that parses `zpool status -j` and writes per-vdev `zfs_vdev_{read,write,checksum}_errors` / `zfs_vdev_slow_ios` plus `zfs_pool_error_count` / `zfs_pool_scan_errors` / `zfs_pool_scan_start_timestamp_seconds` into the node_exporter textfile collector dir (scraped on :9100). Fills the gap left by `pdf/zfs_exporter`, which exports only `zfs_pool_health`. Alert rules live in sea-k8s-flux `custom-alerts.yaml` (`zfs-health` group, `job="bare-metal-node"`). Requires zfsutils >= 2.3 for `zpool status -j`.
+- `zfs_health_metrics_dir`: `/var/lib/node_exporter/textfile_collector` (must match `node_exporter_textfile_directory`)
+- `zfs_health_metrics_interval`: `5min` (systemd `OnUnitActiveSec`)
 - `zfs_datasets`: list of dicts with required keys `{name, quota, compression, recordsize, snapshots}`. Optional key `encryption: {cipher, keyformat, keylocation, key_content}` enables per-dataset ZFS native encryption — the role drops the key at `keylocation` (mode 0400) and creates the dataset with encryption properties. Note: encryption properties can only be set at dataset creation; modifying after creation is a destroy + recreate. The role therefore applies the encryption properties only when the dataset does not exist yet — a pre-existing unencrypted dataset that declares an `encryption:` block is left untouched (migrate it out-of-band via `zfs send | zfs recv` into an encrypted dataset; subsequent runs are then idempotent). The key drop at `keylocation` happens regardless of dataset existence, so the keyfile is in place before any out-of-band migration.
 - `zfs_pool_encryption` (optional): `{cipher, keyformat, keylocation, key_content}` block. When set, encryption is applied at the **pool** level (`zpool create -O ...`) so every dataset in the pool inherits it — including datasets later created by `zfs receive` (e.g. via syncoid). Use this when you want the entire pool encrypted with a single key. Pool-level encryption can only be set at pool creation; changing it after the fact requires destroying and recreating the pool.
 
@@ -38,6 +41,7 @@ Installs and configures Prometheus node_exporter via apt.
 **Default variables:**
 - `node_exporter_listen_address`: `0.0.0.0:9100`
 - `node_exporter_extra_args`: `--collector.systemd.enable-start-time-metrics` (enables `node_systemd_unit_start_time_seconds`; required by the `SyncoidStale` alert in sea-k8s-flux)
+- `node_exporter_textfile_directory`: `/var/lib/node_exporter/textfile_collector` — when set (the default), the role creates the dir and appends `--collector.textfile.directory` so other roles (e.g. `zfs`) can drop `*.prom` files that get scraped on :9100. Set to `""` to disable.
 
 ### `reenchree.common.zfs_exporter`
 

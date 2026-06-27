@@ -1,5 +1,11 @@
 ---
 node_exporter_listen_address: "0.0.0.0:9100"
+# Directory scanned by the node_exporter textfile collector. When set (the
+# default), the role creates it and appends --collector.textfile.directory so
+# other roles can drop *.prom files that get scraped on :9100 — e.g. the zfs
+# role's ZFS vdev-error / scrub metrics (zfs_health_metrics_dir defaults to
+# this same path). Set to "" to disable the collector entirely.
+node_exporter_textfile_directory: "/var/lib/node_exporter/textfile_collector"
 # Extra CLI flags appended to ARGS. Default enables per-unit start-time
 # metrics (`node_systemd_unit_start_time_seconds`) which the
 # `SyncoidStale` alert in sea-k8s-flux/infra/kube-prom-stack/custom-alerts.yaml

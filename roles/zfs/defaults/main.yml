@@ -5,6 +5,18 @@ zfs_disks: []
 zfs_arc_max_gb: 8
 zfs_datasets: []
 
+# ZFS health metrics for Prometheus. pdf/zfs_exporter exports only
+# zfs_pool_health (pool state); it does NOT export per-vdev read/write/checksum
+# error counters or scrub staleness/errors — the early-warning signals for a
+# failing drive in a redundant pool. This role ships a small script + systemd
+# timer that writes those metrics into the node_exporter textfile collector
+# directory, where they're scraped on :9100. Alert rules live in sea-k8s-flux
+# (custom-alerts.yaml, zfs-health group, job="bare-metal-node").
+zfs_health_metrics_enabled: true
+# Must match the consumer's node_exporter_textfile_directory.
+zfs_health_metrics_dir: "/var/lib/node_exporter/textfile_collector"
+zfs_health_metrics_interval: "5min"
+
 # Optional pool-level native ZFS encryption. When defined, the role drops
 # the keyfile at `keylocation` (mode 0400) and adds matching `-O` flags
 # to `zpool create`. Children of the pool inherit encryption — including
