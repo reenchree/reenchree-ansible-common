@@ -1,0 +1,6 @@
+# ansible-galaxy self-install artifact
+.ansible/
+# collection build tarballs
+*.tar.gz
+# retry files
+*.retry
