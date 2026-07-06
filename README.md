@@ -23,6 +23,7 @@ Creates and configures a ZFS pool plus its datasets. Enables the contrib reposit
 - `zfs_health_metrics_enabled`: `true`. Installs `jq` + `/usr/local/bin/zfs-health-metrics.sh` and a systemd timer that parses `zpool status -j` and writes per-vdev `zfs_vdev_{read,write,checksum}_errors` / `zfs_vdev_slow_ios` plus `zfs_pool_error_count` / `zfs_pool_scan_errors` / `zfs_pool_scan_start_timestamp_seconds` into the node_exporter textfile collector dir (scraped on :9100). Fills the gap left by `pdf/zfs_exporter`, which exports only `zfs_pool_health`. Alert rules live in sea-k8s-flux `custom-alerts.yaml` (`zfs-health` group, `job="bare-metal-node"`). Requires zfsutils >= 2.3 for `zpool status -j`.
 - `zfs_health_metrics_dir`: `/var/lib/node_exporter/textfile_collector` (must match `node_exporter_textfile_directory`)
 - `zfs_health_metrics_interval`: `5min` (systemd `OnUnitActiveSec`)
+- `zfs_deb822_sources_file`: `/etc/apt/sources.list.d/debian.sources`. The role enables the `contrib` component (for `zfs-dkms`/`zfsutils-linux`) in both the classic one-line `/etc/apt/sources.list` and this deb822 `.sources` file, whichever exists. Override if the Debian deb822 entry lives in a differently-named `.sources` file.
 - `zfs_datasets`: list of dicts with required keys `{name, quota, compression, recordsize, snapshots}`. Optional key `encryption: {cipher, keyformat, keylocation, key_content}` enables per-dataset ZFS native encryption — the role drops the key at `keylocation` (mode 0400) and creates the dataset with encryption properties. Note: encryption properties can only be set at dataset creation; modifying after creation is a destroy + recreate. The role therefore applies the encryption properties only when the dataset does not exist yet — a pre-existing unencrypted dataset that declares an `encryption:` block is left untouched (migrate it out-of-band via `zfs send | zfs recv` into an encrypted dataset; subsequent runs are then idempotent). The key drop at `keylocation` happens regardless of dataset existence, so the keyfile is in place before any out-of-band migration.
 - `zfs_pool_encryption` (optional): `{cipher, keyformat, keylocation, key_content}` block. When set, encryption is applied at the **pool** level (`zpool create -O ...`) so every dataset in the pool inherits it — including datasets later created by `zfs receive` (e.g. via syncoid). Use this when you want the entire pool encrypted with a single key. Pool-level encryption can only be set at pool creation; changing it after the fact requires destroying and recreating the pool.
 
@@ -45,7 +46,7 @@ Installs and configures Prometheus node_exporter via apt.
 
 ### `reenchree.common.zfs_exporter`
 
-Downloads, installs, and configures the ZFS exporter from GitHub releases.
+Downloads, installs, and configures the ZFS exporter from GitHub releases. Thin wrapper over the internal `github_release_exporter` role; the systemd unit is hardened (`ProtectSystem=full`, `ProtectHome=true`, `NoNewPrivileges=true`).
 
 **Default variables:**
 - `zfs_exporter_version`: `2.3.11`
@@ -54,12 +55,14 @@ Downloads, installs, and configures the ZFS exporter from GitHub releases.
 
 ### `reenchree.common.smartctl_exporter`
 
-Downloads and configures the SMART exporter for Prometheus.
+Downloads and configures the SMART exporter for Prometheus. Thin wrapper over the internal `github_release_exporter` role; the systemd unit is hardened (`ProtectSystem=full`, `ProtectHome=true`, `NoNewPrivileges=true`).
 
 **Default variables:**
 - `smartctl_exporter_version`: `0.14.0`
 - `smartctl_exporter_listen_address`: `0.0.0.0:9633`
 - `smartctl_exporter_smartctl_interval`: `300s`
+
+> `github_release_exporter` is an internal, parameterized role (org/repo/version/binary/unit/description/after/listen/extra_args) that installs a Prometheus exporter from a GitHub release tarball. It is not called directly — use the `zfs_exporter` / `smartctl_exporter` wrappers.
 
 ### `reenchree.common.nut_server`
 
@@ -75,6 +78,32 @@ Installs and configures NUT (Network UPS Tools) in `netserver` mode — `upsd` l
 - `nut_server_udev_rules`: list of `{vendorid, productid, comment?}`. Empty (default) means the role does not write `/etc/udev/rules.d/99-nut-ups.rules` and any existing rule is left in place.
 
 Tasks that touch `upsd.users` and `upsmon.conf` set `no_log: true` to keep credentials out of run logs.
+
+### `reenchree.common.ops`
+
+Common host-lifecycle operations (apt upgrade, reboot, shutdown). This role has **no `tasks/main.yml`** — it is consumed via `include_role` with `tasks_from`, not `roles:`:
+
+```yaml
+- name: APT upgrade
+  ansible.builtin.include_role:
+    name: reenchree.common.ops
+    tasks_from: apt_upgrade      # or reboot / shutdown
+  vars:
+    ops_apt_reboot_if_required: false
+```
+
+Entrypoints:
+- `apt_upgrade` — `apt update` (with lock/retry hardening) + `dist`-upgrade + `autoremove`, then reboot-required detection (the `/run/reboot-required` stamp file OR a newer kernel installed than the running one). Reboots only when `ops_apt_reboot_if_required` is true.
+- `reboot` — `ansible.builtin.reboot`.
+- `shutdown` — `community.general.shutdown`.
+
+**Default variables:**
+- `ops_apt_reboot_if_required`: `false` — opt-in auto-reboot after upgrade.
+- `ops_apt_upgrade`: `dist`; `ops_apt_autoremove`: `true`.
+- `ops_apt_cache_valid_time`: `3600`.
+- `ops_apt_update_cache_retries`: `5`; `ops_apt_update_cache_retry_max_delay`: `60`; `ops_apt_lock_timeout`: `300` — apt-lock/retry tolerance for flaky or contended hosts.
+- `ops_reboot_msg`: `Reboot initiated by Ansible`; `ops_reboot_timeout`: `600`; `ops_reboot_post_reboot_delay`: `10` (post-upgrade reboot only).
+- `ops_shutdown_delay`: `60`; `ops_shutdown_msg`: `Shutdown initiated by Ansible`.
 
 ## Installation
 
