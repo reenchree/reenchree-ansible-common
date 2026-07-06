@@ -1,83 +1,15 @@
 ---
-- name: Check if zfs_exporter is installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/zfs_exporter
-  register: zfs_exporter_bin
-
-- name: Get installed zfs_exporter version
-  ansible.builtin.shell:
-    cmd: "/usr/local/bin/zfs_exporter --version 2>&1"
-  register: zfs_exporter_installed_version
-  changed_when: false
-  failed_when: false
-  when: zfs_exporter_bin.stat.exists
-
-- name: Download zfs_exporter tarball
-  ansible.builtin.get_url:
-    url: "https://github.com/pdf/zfs_exporter/releases/download/v{{ zfs_exporter_version }}/zfs_exporter-{{ zfs_exporter_version }}.linux-amd64.tar.gz"
-    dest: "/tmp/zfs_exporter-{{ zfs_exporter_version }}.linux-amd64.tar.gz"
-    mode: "0644"
-  when: >
-    not zfs_exporter_bin.stat.exists or
-    (zfs_exporter_installed_version.stdout is defined and zfs_exporter_version not in zfs_exporter_installed_version.stdout)
-
-- name: Extract zfs_exporter tarball
-  ansible.builtin.unarchive:
-    src: "/tmp/zfs_exporter-{{ zfs_exporter_version }}.linux-amd64.tar.gz"
-    dest: /tmp/
-    remote_src: true
-  when: >
-    not zfs_exporter_bin.stat.exists or
-    (zfs_exporter_installed_version.stdout is defined and zfs_exporter_version not in zfs_exporter_installed_version.stdout)
-
-- name: Install zfs_exporter binary
-  ansible.builtin.copy:
-    src: "/tmp/zfs_exporter-{{ zfs_exporter_version }}.linux-amd64/zfs_exporter"
-    dest: /usr/local/bin/zfs_exporter
-    remote_src: true
-    owner: root
-    group: root
-    mode: "0755"
-  when: >
-    not zfs_exporter_bin.stat.exists or
-    (zfs_exporter_installed_version.stdout is defined and zfs_exporter_version not in zfs_exporter_installed_version.stdout)
-  notify: restart zfs_exporter
-
-- name: Clean up tarball and extracted directory
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - "/tmp/zfs_exporter-{{ zfs_exporter_version }}.linux-amd64.tar.gz"
-    - "/tmp/zfs_exporter-{{ zfs_exporter_version }}.linux-amd64"
-
-- name: Deploy zfs_exporter systemd unit
-  ansible.builtin.copy:
-    content: |
-      [Unit]
-      Description=ZFS Exporter
-      After=network-online.target zfs.target
-      Wants=network-online.target
-
-      [Service]
-      ExecStart=/usr/local/bin/zfs_exporter --web.listen-address={{ zfs_exporter_listen_address }}{{ ' ' + zfs_exporter_extra_args if zfs_exporter_extra_args else '' }}
-      Restart=on-failure
-      RestartSec=5
-      ProtectSystem=full
-      ProtectHome=true
-      NoNewPrivileges=true
-
-      [Install]
-      WantedBy=multi-user.target
-    dest: /etc/systemd/system/zfs_exporter.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify: restart zfs_exporter
-
-- name: Enable and start zfs_exporter
-  ansible.builtin.systemd:
-    name: zfs_exporter
-    enabled: true
-    state: started
-    daemon_reload: true
+# Thin wrapper: delegates to the internal github_release_exporter role.
+# Public var names/defaults (zfs_exporter_*) are preserved for back-compat.
+- name: Install zfs_exporter via github_release_exporter
+  ansible.builtin.include_role:
+    name: reenchree.common.github_release_exporter
+  vars:
+    github_release_exporter_org: pdf
+    github_release_exporter_repo: zfs_exporter
+    github_release_exporter_version: "{{ zfs_exporter_version }}"
+    github_release_exporter_listen_address: "{{ zfs_exporter_listen_address }}"
+    github_release_exporter_extra_args: "{{ zfs_exporter_extra_args }}"
+    github_release_exporter_unit_name: zfs_exporter
+    github_release_exporter_description: ZFS Exporter
+    github_release_exporter_after: network-online.target zfs.target

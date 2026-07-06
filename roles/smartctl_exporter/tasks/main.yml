@@ -1,80 +1,15 @@
 ---
-- name: Check if smartctl_exporter is installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/smartctl_exporter
-  register: smartctl_exporter_bin
-
-- name: Get installed smartctl_exporter version
-  ansible.builtin.shell:
-    cmd: "/usr/local/bin/smartctl_exporter --version 2>&1"
-  register: smartctl_exporter_installed_version
-  changed_when: false
-  failed_when: false
-  when: smartctl_exporter_bin.stat.exists
-
-- name: Download smartctl_exporter tarball
-  ansible.builtin.get_url:
-    url: "https://github.com/prometheus-community/smartctl_exporter/releases/download/v{{ smartctl_exporter_version }}/smartctl_exporter-{{ smartctl_exporter_version }}.linux-amd64.tar.gz"
-    dest: "/tmp/smartctl_exporter-{{ smartctl_exporter_version }}.linux-amd64.tar.gz"
-    mode: "0644"
-  when: >
-    not smartctl_exporter_bin.stat.exists or
-    (smartctl_exporter_installed_version.stdout is defined and smartctl_exporter_version not in smartctl_exporter_installed_version.stdout)
-
-- name: Extract smartctl_exporter tarball
-  ansible.builtin.unarchive:
-    src: "/tmp/smartctl_exporter-{{ smartctl_exporter_version }}.linux-amd64.tar.gz"
-    dest: /tmp/
-    remote_src: true
-  when: >
-    not smartctl_exporter_bin.stat.exists or
-    (smartctl_exporter_installed_version.stdout is defined and smartctl_exporter_version not in smartctl_exporter_installed_version.stdout)
-
-- name: Install smartctl_exporter binary
-  ansible.builtin.copy:
-    src: "/tmp/smartctl_exporter-{{ smartctl_exporter_version }}.linux-amd64/smartctl_exporter"
-    dest: /usr/local/bin/smartctl_exporter
-    remote_src: true
-    owner: root
-    group: root
-    mode: "0755"
-  when: >
-    not smartctl_exporter_bin.stat.exists or
-    (smartctl_exporter_installed_version.stdout is defined and smartctl_exporter_version not in smartctl_exporter_installed_version.stdout)
-  notify: restart smartctl_exporter
-
-- name: Clean up tarball and extracted directory
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - "/tmp/smartctl_exporter-{{ smartctl_exporter_version }}.linux-amd64.tar.gz"
-    - "/tmp/smartctl_exporter-{{ smartctl_exporter_version }}.linux-amd64"
-
-- name: Deploy smartctl_exporter systemd unit
-  ansible.builtin.copy:
-    content: |
-      [Unit]
-      Description=Smartctl Exporter
-      After=network-online.target
-      Wants=network-online.target
-
-      [Service]
-      ExecStart=/usr/local/bin/smartctl_exporter --web.listen-address={{ smartctl_exporter_listen_address }} --smartctl.interval={{ smartctl_exporter_smartctl_interval }} --smartctl.path=/usr/sbin/smartctl
-      Restart=on-failure
-      RestartSec=5
-
-      [Install]
-      WantedBy=multi-user.target
-    dest: /etc/systemd/system/smartctl_exporter.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify: restart smartctl_exporter
-
-- name: Enable and start smartctl_exporter
-  ansible.builtin.systemd:
-    name: smartctl_exporter
-    enabled: true
-    state: started
-    daemon_reload: true
+# Thin wrapper: delegates to the internal github_release_exporter role.
+# Public var names/defaults (smartctl_exporter_*) are preserved for back-compat.
+- name: Install smartctl_exporter via github_release_exporter
+  ansible.builtin.include_role:
+    name: reenchree.common.github_release_exporter
+  vars:
+    github_release_exporter_org: prometheus-community
+    github_release_exporter_repo: smartctl_exporter
+    github_release_exporter_version: "{{ smartctl_exporter_version }}"
+    github_release_exporter_listen_address: "{{ smartctl_exporter_listen_address }}"
+    github_release_exporter_extra_args: "--smartctl.interval={{ smartctl_exporter_smartctl_interval }} --smartctl.path=/usr/sbin/smartctl"
+    github_release_exporter_unit_name: smartctl_exporter
+    github_release_exporter_description: Smartctl Exporter
+    github_release_exporter_after: network-online.target

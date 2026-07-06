@@ -1,0 +1,92 @@
+---
+# Tarball stem, e.g. zfs_exporter-2.3.11.linux-amd64
+- name: Set github_release_exporter tarball stem
+  ansible.builtin.set_fact:
+    _grx_stem: "{{ github_release_exporter_repo }}-{{ github_release_exporter_version }}.{{ github_release_exporter_arch }}"
+
+- name: Check if {{ github_release_exporter_binary }} is installed
+  ansible.builtin.stat:
+    path: "/usr/local/bin/{{ github_release_exporter_binary }}"
+  register: grx_bin
+
+# Capture stderr too: some exporters print --version to stderr. Regression-fixed.
+- name: Get installed {{ github_release_exporter_binary }} version
+  ansible.builtin.shell:
+    cmd: "/usr/local/bin/{{ github_release_exporter_binary }} --version 2>&1"
+  register: grx_installed_version
+  changed_when: false
+  failed_when: false
+  when: grx_bin.stat.exists
+
+- name: Decide whether {{ github_release_exporter_binary }} needs (re)install
+  ansible.builtin.set_fact:
+    grx_needs_install: >-
+      {{
+        not grx_bin.stat.exists or
+        (grx_installed_version.stdout is defined and
+         github_release_exporter_version not in grx_installed_version.stdout)
+      }}
+
+- name: Download {{ github_release_exporter_binary }} tarball
+  ansible.builtin.get_url:
+    url: "https://github.com/{{ github_release_exporter_org }}/{{ github_release_exporter_repo }}/releases/download/v{{ github_release_exporter_version }}/{{ _grx_stem }}.tar.gz"
+    dest: "/tmp/{{ _grx_stem }}.tar.gz"
+    mode: "0644"
+  when: grx_needs_install
+
+- name: Extract {{ github_release_exporter_binary }} tarball
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ _grx_stem }}.tar.gz"
+    dest: /tmp/
+    remote_src: true
+  when: grx_needs_install
+
+- name: Install {{ github_release_exporter_binary }} binary
+  ansible.builtin.copy:
+    src: "/tmp/{{ _grx_stem }}/{{ github_release_exporter_binary }}"
+    dest: "/usr/local/bin/{{ github_release_exporter_binary }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  when: grx_needs_install
+  notify: restart github_release_exporter
+
+- name: Clean up tarball and extracted directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/tmp/{{ _grx_stem }}.tar.gz"
+    - "/tmp/{{ _grx_stem }}"
+
+- name: Deploy {{ github_release_exporter_unit_name }} systemd unit
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Description={{ github_release_exporter_description }}
+      After={{ github_release_exporter_after }}
+      Wants=network-online.target
+
+      [Service]
+      ExecStart=/usr/local/bin/{{ github_release_exporter_binary }} --web.listen-address={{ github_release_exporter_listen_address }}{{ ' ' + github_release_exporter_extra_args if github_release_exporter_extra_args else '' }}
+      Restart=on-failure
+      RestartSec=5
+      ProtectSystem=full
+      ProtectHome=true
+      NoNewPrivileges=true
+
+      [Install]
+      WantedBy=multi-user.target
+    dest: "/etc/systemd/system/{{ github_release_exporter_unit_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart github_release_exporter
+
+- name: Enable and start {{ github_release_exporter_unit_name }}
+  ansible.builtin.systemd:
+    name: "{{ github_release_exporter_unit_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
