@@ -1,0 +1,21 @@
+---
+# Consumed via include_role with tasks_from: apt_upgrade | reboot | shutdown.
+# All knobs are ops_*-namespaced.
+
+# apt_upgrade
+ops_apt_reboot_if_required: false        # opt-in auto-reboot after upgrade
+ops_apt_upgrade: dist
+ops_apt_autoremove: true
+ops_apt_cache_valid_time: 3600
+ops_apt_update_cache_retries: 5
+ops_apt_update_cache_retry_max_delay: 60
+ops_apt_lock_timeout: 300
+
+# reboot (standalone + post-upgrade)
+ops_reboot_msg: "Reboot initiated by Ansible"
+ops_reboot_timeout: 600
+ops_reboot_post_reboot_delay: 10
+
+# shutdown
+ops_shutdown_delay: 60
+ops_shutdown_msg: "Shutdown initiated by Ansible"

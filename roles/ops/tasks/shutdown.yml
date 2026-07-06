@@ -1,0 +1,5 @@
+---
+- name: Shut down the host
+  community.general.shutdown:
+    delay: "{{ ops_shutdown_delay }}"
+    msg: "{{ ops_shutdown_msg }}"

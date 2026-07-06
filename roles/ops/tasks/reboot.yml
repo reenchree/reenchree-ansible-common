@@ -1,0 +1,5 @@
+---
+- name: Reboot the host
+  ansible.builtin.reboot:
+    msg: "{{ ops_reboot_msg }}"
+    reboot_timeout: "{{ ops_reboot_timeout }}"

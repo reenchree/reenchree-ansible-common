@@ -1,0 +1,80 @@
+---
+# apt update + dist-upgrade + reboot-required detection. Optionally reboots
+# when ops_apt_reboot_if_required. Superset of the per-host apt-upgrade and
+# apt-upgrade-with-restart playbooks (retry knobs + kernel-newer detection).
+- name: Record current kernel (before upgrade)
+  ansible.builtin.command: uname -r
+  register: ops_kernel_before
+  changed_when: false
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ ops_apt_cache_valid_time }}"
+    update_cache_retries: "{{ ops_apt_update_cache_retries }}"
+    update_cache_retry_max_delay: "{{ ops_apt_update_cache_retry_max_delay }}"
+    lock_timeout: "{{ ops_apt_lock_timeout }}"
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: "{{ ops_apt_upgrade }}"
+    autoremove: "{{ ops_apt_autoremove }}"
+
+# set -o pipefail is a bashism; Debian /bin/sh is dash -> executable: /bin/bash.
+- name: Check if a newer kernel is installed than the running one
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      RUNNING=$(uname -r)
+      FLAVOR=$(echo "$RUNNING" | sed 's/^[0-9.]*//')
+      LATEST=$(ls -1 /lib/modules/ | grep -F "$FLAVOR" | sort -V | tail -1)
+      [ "$RUNNING" != "$LATEST" ] && echo "reboot" || echo "ok"
+    executable: /bin/bash
+  register: ops_kernel_check
+  changed_when: false
+
+- name: Check reboot-required stamp file
+  ansible.builtin.stat:
+    path: /run/reboot-required
+  register: ops_reboot_file
+
+- name: Decide if reboot is required
+  ansible.builtin.set_fact:
+    ops_reboot_required: >-
+      {{
+        ops_reboot_file.stat.exists
+        or
+        ops_kernel_check.stdout | trim == 'reboot'
+      }}
+
+- name: Notify if reboot is required (no auto-reboot)
+  ansible.builtin.debug:
+    msg: "Reboot required to complete upgrade"
+  when:
+    - ops_reboot_required
+    - not ops_apt_reboot_if_required
+
+- name: Reboot if needed
+  ansible.builtin.reboot:
+    msg: "{{ ops_reboot_msg }} after full-upgrade"
+    reboot_timeout: "{{ ops_reboot_timeout }}"
+    post_reboot_delay: "{{ ops_reboot_post_reboot_delay }}"
+    test_command: "uname -r"
+  when:
+    - ops_reboot_required
+    - ops_apt_reboot_if_required
+
+- name: Verify kernel after reboot
+  ansible.builtin.command: uname -r
+  register: ops_kernel_after
+  changed_when: false
+  when:
+    - ops_reboot_required
+    - ops_apt_reboot_if_required
+
+- name: Show kernel change summary
+  ansible.builtin.debug:
+    msg: "Kernel: {{ ops_kernel_before.stdout }} -> {{ ops_kernel_after.stdout }}"
+  when:
+    - ops_reboot_required
+    - ops_apt_reboot_if_required
