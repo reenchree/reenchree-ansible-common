@@ -1,9 +1,30 @@
 ---
-- name: Enable contrib repository for ZFS
+# zfs-dkms/zfsutils-linux live in Debian contrib. Enable it in whichever
+# apt sources format the host uses: classic one-line sources.list AND the
+# Debian 12+/trixie deb822 .sources file. Both edits are idempotent.
+- name: Stat classic apt sources.list
+  ansible.builtin.stat:
+    path: /etc/apt/sources.list
+  register: zfs_classic_sources
+
+- name: Enable contrib in classic apt sources.list
   ansible.builtin.replace:
     path: /etc/apt/sources.list
     regexp: '^(deb(?:-src)?\s+http://deb\.debian\.org/debian/\s+\S+\s+main(?!.*\bcontrib\b))(.*)'
     replace: '\1 contrib\2'
+  when: zfs_classic_sources.stat.exists
+
+- name: Stat deb822 Debian sources file
+  ansible.builtin.stat:
+    path: "{{ zfs_deb822_sources_file }}"
+  register: zfs_deb822_sources
+
+- name: Enable contrib in deb822 Debian sources (trixie+)
+  ansible.builtin.replace:
+    path: "{{ zfs_deb822_sources_file }}"
+    regexp: '^(Components:(?!.*\bcontrib\b).*\bmain\b.*)$'
+    replace: '\1 contrib'
+  when: zfs_deb822_sources.stat.exists
 
 - name: Install ZFS packages
   ansible.builtin.apt:

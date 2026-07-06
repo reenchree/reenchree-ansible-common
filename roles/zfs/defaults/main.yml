@@ -5,6 +5,9 @@ zfs_disks: []
 zfs_arc_max_gb: 8
 zfs_datasets: []
 
+# deb822 Debian OS sources file; contrib is enabled here on trixie+.
+zfs_deb822_sources_file: "/etc/apt/sources.list.d/debian.sources"
+
 # ZFS health metrics for Prometheus. pdf/zfs_exporter exports only
 # zfs_pool_health (pool state); it does NOT export per-vdev read/write/checksum
 # error counters or scrub staleness/errors — the early-warning signals for a
