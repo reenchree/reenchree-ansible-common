@@ -50,7 +50,7 @@
     group: root
     mode: "0755"
   when: grx_needs_install
-  notify: restart github_release_exporter
+  register: grx_binary_install
 
 - name: Clean up tarball and extracted directory
   ansible.builtin.file:
@@ -82,7 +82,7 @@
     owner: root
     group: root
     mode: "0644"
-  notify: restart github_release_exporter
+  register: grx_unit_deploy
 
 - name: Enable and start {{ github_release_exporter_unit_name }}
   ansible.builtin.systemd:
@@ -90,3 +90,12 @@
     enabled: true
     state: started
     daemon_reload: true
+
+# In-role restart, not a handler: two exporters in one play dedupe same-named
+# handlers, so only one would restart on a dual version bump.
+- name: Restart {{ github_release_exporter_unit_name }} on binary/unit change
+  ansible.builtin.systemd:
+    name: "{{ github_release_exporter_unit_name }}"
+    state: restarted
+    daemon_reload: true
+  when: (grx_binary_install is changed) or (grx_unit_deploy is changed)

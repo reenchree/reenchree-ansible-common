@@ -3,6 +3,9 @@
 All notable changes to the reenchree.common collection. One line per
 released version; 1.8.0 detailed. Consumers pin the matching git tag.
 
+## 1.8.1
+- fix(github_release_exporter): replace the shared `restart github_release_exporter` handler with in-role registered restarts — two exporters in one play dedupe same-named handlers, so a dual version bump only restarted one service.
+
 ## 1.8.0
 - refactor(exporters): `zfs_exporter` and `smartctl_exporter` now delegate to a shared internal `github_release_exporter` role; public var names/defaults unchanged.
 - fix(smartctl_exporter): systemd unit gains `ProtectSystem=full` / `ProtectHome=true` / `NoNewPrivileges=true` (restores parity with `zfs_exporter`).
