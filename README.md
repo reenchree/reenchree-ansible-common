@@ -62,7 +62,17 @@ Downloads and configures the SMART exporter for Prometheus. Thin wrapper over th
 - `smartctl_exporter_listen_address`: `0.0.0.0:9633`
 - `smartctl_exporter_smartctl_interval`: `300s`
 
-> `github_release_exporter` is an internal, parameterized role (org/repo/version/binary/unit/description/after/listen/extra_args) that installs a Prometheus exporter from a GitHub release tarball. It is not called directly — use the `zfs_exporter` / `smartctl_exporter` wrappers.
+### `reenchree.common.nut_exporter`
+
+Downloads, installs, and configures [DRuggeri/nut_exporter](https://github.com/DRuggeri/nut_exporter) — Prometheus metrics for a NUT (Network UPS Tools) UPS, scraped from the local `upsd`. Thin wrapper over the internal `github_release_exporter` role; the systemd unit is hardened (`ProtectSystem=full`, `ProtectHome=true`, `NoNewPrivileges=true`). UPS metrics are served on `/ups_metrics` (`/metrics` is the exporter's own process metrics). Connects anonymously to `127.0.0.1:3493` by design — no NUT credentials involved. With a single UPS defined the exporter auto-selects it; multi-UPS hosts need the `?ups=` scrape parameter.
+
+**Default variables:**
+- `nut_exporter_version`: `3.3.0`
+- `nut_exporter_listen_address`: `0.0.0.0:9199`
+- `nut_exporter_vars_enable`: CSV of UPS variables exported as metrics (includes `battery.runtime`, which upstream's default list omits)
+- `nut_exporter_arch`: release-asset arch token, auto-mapped from `ansible_architecture` (`x86_64` → `linux-amd64`, `aarch64` → `linux-arm64`)
+
+> `github_release_exporter` is an internal, parameterized role (org/repo/version/binary/unit/description/after/listen/extra_args/asset/archive) that installs a Prometheus exporter from a GitHub release asset — a `.tar.gz` by default, or a bare binary when the caller sets `github_release_exporter_asset` (full asset filename) and `github_release_exporter_archive: false`. It is not called directly — use the `zfs_exporter` / `smartctl_exporter` / `nut_exporter` wrappers.
 
 ### `reenchree.common.nut_server`
 
@@ -133,4 +143,5 @@ roles:
   - role: reenchree.common.zfs_exporter
   - role: reenchree.common.smartctl_exporter
   - role: reenchree.common.nut_server
+  - role: reenchree.common.nut_exporter
 ```

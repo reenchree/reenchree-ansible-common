@@ -10,12 +10,14 @@
   register: grx_bin
 
 # Capture stderr too: some exporters print --version to stderr. Regression-fixed.
+# check_mode: false — read-only probe; skipping it registers stdout="" and forces a bogus reinstall under --check
 - name: Get installed {{ github_release_exporter_binary }} version
   ansible.builtin.shell:
     cmd: "/usr/local/bin/{{ github_release_exporter_binary }} --version 2>&1"
   register: grx_installed_version
   changed_when: false
   failed_when: false
+  check_mode: false
   when: grx_bin.stat.exists
 
 - name: Decide whether {{ github_release_exporter_binary }} needs (re)install
@@ -27,23 +29,24 @@
          github_release_exporter_version not in grx_installed_version.stdout)
       }}
 
-- name: Download {{ github_release_exporter_binary }} tarball
+- name: Download {{ github_release_exporter_binary }} release asset
   ansible.builtin.get_url:
-    url: "https://github.com/{{ github_release_exporter_org }}/{{ github_release_exporter_repo }}/releases/download/v{{ github_release_exporter_version }}/{{ _grx_stem }}.tar.gz"
-    dest: "/tmp/{{ _grx_stem }}.tar.gz"
+    url: "https://github.com/{{ github_release_exporter_org }}/{{ github_release_exporter_repo }}/releases/download/v{{ github_release_exporter_version }}/{{ github_release_exporter_asset }}"
+    dest: "/tmp/{{ github_release_exporter_asset }}"
     mode: "0644"
   when: grx_needs_install
 
 - name: Extract {{ github_release_exporter_binary }} tarball
   ansible.builtin.unarchive:
-    src: "/tmp/{{ _grx_stem }}.tar.gz"
+    src: "/tmp/{{ github_release_exporter_asset }}"
     dest: /tmp/
     remote_src: true
-  when: grx_needs_install
+  when: grx_needs_install and github_release_exporter_archive
 
+# Copy, not get_url-to-dest: atomic rename over the running binary, single restart trigger
 - name: Install {{ github_release_exporter_binary }} binary
   ansible.builtin.copy:
-    src: "/tmp/{{ _grx_stem }}/{{ github_release_exporter_binary }}"
+    src: "{{ '/tmp/' + _grx_stem + '/' + github_release_exporter_binary if github_release_exporter_archive else '/tmp/' + github_release_exporter_asset }}"
     dest: "/usr/local/bin/{{ github_release_exporter_binary }}"
     remote_src: true
     owner: root
@@ -52,12 +55,13 @@
   when: grx_needs_install
   register: grx_binary_install
 
-- name: Clean up tarball and extracted directory
+# Extract dir never exists in bare mode; state=absent no-ops
+- name: Clean up downloaded asset and extracted directory
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
   loop:
-    - "/tmp/{{ _grx_stem }}.tar.gz"
+    - "/tmp/{{ github_release_exporter_asset }}"
     - "/tmp/{{ _grx_stem }}"
 
 - name: Deploy {{ github_release_exporter_unit_name }} systemd unit

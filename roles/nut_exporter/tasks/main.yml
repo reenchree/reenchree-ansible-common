@@ -1,0 +1,18 @@
+---
+# Thin wrapper: delegates to the internal github_release_exporter role.
+# Anonymous local upsd on purpose — no --nut.username/NUT_EXPORTER_PASSWORD.
+- name: Install nut_exporter via github_release_exporter
+  ansible.builtin.include_role:
+    name: reenchree.common.github_release_exporter
+  vars:
+    github_release_exporter_org: DRuggeri
+    github_release_exporter_repo: nut_exporter
+    github_release_exporter_version: "{{ nut_exporter_version }}"
+    github_release_exporter_listen_address: "{{ nut_exporter_listen_address }}"
+    github_release_exporter_extra_args: "--nut.vars_enable={{ nut_exporter_vars_enable }}"
+    github_release_exporter_unit_name: nut_exporter
+    github_release_exporter_description: NUT Exporter
+    github_release_exporter_after: network-online.target nut-server.service
+    # Bare-binary asset: v-prefixed version + dashed arch in the filename
+    github_release_exporter_asset: "nut_exporter-v{{ nut_exporter_version }}-{{ nut_exporter_arch }}"
+    github_release_exporter_archive: false

@@ -1,9 +1,13 @@
 ---
-# Internal role: install a Prometheus exporter from a GitHub release tarball.
-# Callers (zfs_exporter, smartctl_exporter) supply org/repo/version/unit/etc.
+# Internal role: install a Prometheus exporter from a GitHub release asset.
+# Callers (zfs_exporter, smartctl_exporter, nut_exporter) supply org/repo/version/unit/etc.
 github_release_exporter_arch: "linux-amd64"
 github_release_exporter_extra_args: ""
 # Required from caller (no safe default): _org _repo _version
 #   _listen_address _unit_name _description
 github_release_exporter_binary: "{{ github_release_exporter_repo }}"
 github_release_exporter_after: "network-online.target"
+# Release asset filename; default matches the classic tarball shape
+github_release_exporter_asset: "{{ github_release_exporter_repo }}-{{ github_release_exporter_version }}.{{ github_release_exporter_arch }}.tar.gz"
+# false = asset is the bare binary itself (skip unarchive)
+github_release_exporter_archive: true

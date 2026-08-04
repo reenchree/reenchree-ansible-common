@@ -1,0 +1,7 @@
+---
+nut_exporter_version: "3.3.0"
+nut_exporter_listen_address: "0.0.0.0:9199"
+# CSV of UPS variables exported as metrics (--nut.vars_enable)
+nut_exporter_vars_enable: "battery.charge,battery.runtime,input.voltage,input.voltage.nominal,ups.load,ups.status,ups.realpower,ups.temperature"
+# Release asset arch token: x86_64 -> linux-amd64, aarch64 -> linux-arm64
+nut_exporter_arch: "{{ 'linux-arm64' if ansible_architecture == 'aarch64' else 'linux-amd64' }}"
