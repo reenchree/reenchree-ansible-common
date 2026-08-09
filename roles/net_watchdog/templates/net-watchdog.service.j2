@@ -1,0 +1,7 @@
+[Unit]
+Description=Network self-healing watchdog tick
+# no network dependency — the whole point is running while the network is broken
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/net-watchdog.sh

@@ -3,6 +3,10 @@
 All notable changes to the reenchree.common collection. One line per
 released version; newest release detailed. Consumers pin the matching git tag.
 
+## 1.10.0
+- feat(net_watchdog): new role — self-healing watchdog for Wi-Fi + WireGuard uplinked hosts (offsite mini-NAS pattern). Layer-diagnosing (link/LAN/WAN/tunnel), escalating remediation ladder (nmcli bounce → NM restart → USB `authorized` reset → module reload → xhci rebind), each rung validated live on rdu-nas before the role was written. No reboot rung by design; optional systemd hardware-watchdog arming (`net_watchdog_hardware_watchdog_seconds`) covers kernel hangs. Dry-run-by-default; `net_watchdog_*` textfile metrics. Born from the 2026-07-11→08-09 rdu-nas outage (AP dropped the client; box sat healthy but offline for 4 weeks with no self-recovery).
+- fix(zfs): zfs-load-key.service now runs a file://-only helper (`zfs-load-file-keys.sh`) instead of `zfs load-key -a` — `-a` exits 255 on datasets whose keys are absent by design (raw-received blind replicas, e.g. rdu-nas `tank/storage`), leaving a red FAILED unit every boot. Genuine file:// load failures still fail the unit. No behavior change on hosts where all keylocations are file:// (Hercules).
+
 ## 1.9.0
 - feat(nut_exporter): new thin-wrapper role installing DRuggeri/nut_exporter (UPS metrics from a local upsd on :9199, `/ups_metrics`). Anonymous by design — no NUT credentials in units or logs. Arch auto-mapped from `ansible_architecture` (amd64/arm64).
 - feat(github_release_exporter): support bare-binary release assets via `github_release_exporter_asset` (full asset filename, default = classic tarball shape) + `github_release_exporter_archive` (false = skip unarchive). Defaults reproduce prior behavior exactly; zfs/smartctl callers verified byte-identical in check mode.

@@ -115,6 +115,23 @@ Entrypoints:
 - `ops_reboot_msg`: `Reboot initiated by Ansible`; `ops_reboot_timeout`: `600`; `ops_reboot_post_reboot_delay`: `10` (post-upgrade reboot only).
 - `ops_shutdown_delay`: `60`; `ops_shutdown_msg`: `Shutdown initiated by Ansible`.
 
+### `reenchree.common.net_watchdog`
+
+Self-healing watchdog for hosts whose only uplink is Wi-Fi + WireGuard (the offsite mini-NAS pattern). A per-minute timer diagnoses which layer is broken — link, LAN, WAN, or tunnel — and remediates only that layer, escalating through a ladder of progressively deeper resets: `nmcli` bounce → NetworkManager restart → USB device reset (`authorized` toggle) → driver module reload → xhci controller rebind. There is deliberately **no reboot rung**; kernel/PID1 hangs are covered by the optional hardware watchdog. An ISP outage (LAN up, WAN down) is never remediated. USB topology (device path, module name, xhci PCI address) is derived at runtime while healthy and cached, since the deep rungs run exactly when the interface has vanished. Emits `net_watchdog_*` metrics via the node_exporter textfile collector.
+
+**Default variables:**
+- `net_watchdog_interface`: `""` — **required**, the Wi-Fi interface (e.g. `wlx6c1ff7857a30`).
+- `net_watchdog_nm_connection`: `""` — **required**, the NetworkManager profile name.
+- `net_watchdog_health_targets`: `[]` — **required**, IPs proving the tunnel end-to-end (must answer ICMP from this host — the WG hub IP may not!).
+- `net_watchdog_wg_interface`: `wg0`; `net_watchdog_wan_targets`: `[1.1.1.1, 8.8.8.8]`.
+- `net_watchdog_handshake_max_age_seconds`: `180` — a fresh WG handshake also counts as tunnel-healthy (protects against the health-target host itself being down).
+- `net_watchdog_dry_run`: `true` — **safe-by-default**: logs and metrics only; set `false` per-host to arm after a soak.
+- `net_watchdog_grace_seconds`: `600` — no action until an outage lasts this long (residential-ISP flap budget).
+- `net_watchdog_rung_dwell_seconds`: `300`; `net_watchdog_retry_interval_seconds`: `3600` — after 5 actions the ladder cycles at the slower retry cadence, forever (no give-up state).
+- `net_watchdog_interval_seconds`: `60`; `net_watchdog_boot_delay_seconds`: `180`.
+- `net_watchdog_state_dir`: `/var/lib/net-watchdog`; `net_watchdog_textfile_directory`: `/var/lib/node_exporter/textfile_collector` (`""` disables metrics).
+- `net_watchdog_hardware_watchdog_seconds`: `0` — `> 0` arms the systemd hardware watchdog (`RuntimeWatchdogSec` drop-in + daemon-reexec); the only reboot path this role configures.
+
 ## Installation
 
 Add to your `requirements.yml`:

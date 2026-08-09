@@ -1,0 +1,31 @@
+---
+# Interface + NM profile under management (both required)
+net_watchdog_interface: ""
+net_watchdog_nm_connection: ""
+net_watchdog_wg_interface: wg0
+
+# IPs that prove the tunnel path end-to-end (required; pinged with -n, no DNS).
+# Pick hosts that answer ICMP from this box — on rdu-nas the WG hub .1 does NOT.
+net_watchdog_health_targets: []
+net_watchdog_wan_targets: [1.1.1.1, 8.8.8.8]
+# Fresh WG handshake also counts as tunnel-healthy (protects against the
+# health-target host itself being down)
+net_watchdog_handshake_max_age_seconds: 180
+
+# Safe-by-default: log + metrics only until explicitly armed per-host
+net_watchdog_dry_run: true
+# No action until an outage has lasted this long (residential-ISP flap budget)
+net_watchdog_grace_seconds: 600
+# Pause between escalation rungs; after 5 actions, slow to the retry interval
+net_watchdog_rung_dwell_seconds: 300
+net_watchdog_retry_interval_seconds: 3600
+
+net_watchdog_interval_seconds: 60
+net_watchdog_boot_delay_seconds: 180
+net_watchdog_state_dir: /var/lib/net-watchdog
+# "" disables metrics; normally matches node_exporter_textfile_directory
+net_watchdog_textfile_directory: /var/lib/node_exporter/textfile_collector
+
+# > 0 arms the systemd hardware watchdog (RuntimeWatchdogSec) via a
+# system.conf.d drop-in — kernel/PID1 hangs self-reboot. 0 leaves it alone.
+net_watchdog_hardware_watchdog_seconds: 0

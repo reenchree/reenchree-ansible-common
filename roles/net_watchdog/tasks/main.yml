@@ -1,0 +1,80 @@
+---
+- name: Validate required net_watchdog variables
+  ansible.builtin.assert:
+    that:
+      - net_watchdog_interface | length > 0
+      - net_watchdog_nm_connection | length > 0
+      - net_watchdog_health_targets | length > 0
+    fail_msg: >-
+      net_watchdog_interface, net_watchdog_nm_connection and
+      net_watchdog_health_targets must all be set
+
+- name: Ensure state directory
+  ansible.builtin.file:
+    path: "{{ net_watchdog_state_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install net-watchdog script
+  ansible.builtin.copy:
+    src: net-watchdog.sh
+    dest: /usr/local/sbin/net-watchdog.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Configure net-watchdog
+  ansible.builtin.template:
+    src: net-watchdog.env.j2
+    dest: /etc/default/net-watchdog
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install net-watchdog systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - net-watchdog.service
+    - net-watchdog.timer
+  register: net_watchdog_units
+
+- name: Enable and start net-watchdog timer
+  ansible.builtin.systemd:
+    name: net-watchdog.timer
+    enabled: true
+    state: "{{ 'restarted' if net_watchdog_units.changed else 'started' }}"
+    daemon_reload: true
+
+# Hardware watchdog (iTCO & friends): kernel/PID1 hangs self-reboot. This is
+# the only reboot path the role sets up — the userspace ladder never reboots.
+- name: Ensure system.conf.d exists
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: net_watchdog_hardware_watchdog_seconds | int > 0
+
+- name: Arm systemd hardware watchdog
+  ansible.builtin.copy:
+    content: |
+      [Manager]
+      RuntimeWatchdogSec={{ net_watchdog_hardware_watchdog_seconds }}
+    dest: /etc/systemd/system.conf.d/10-net-watchdog-hw.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: net_watchdog_hardware_watchdog_seconds | int > 0
+  register: net_watchdog_hw
+
+- name: Re-execute systemd to apply hardware watchdog
+  ansible.builtin.command: systemctl daemon-reexec
+  when: net_watchdog_hw is changed

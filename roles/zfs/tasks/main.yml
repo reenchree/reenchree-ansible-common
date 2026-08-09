@@ -339,9 +339,23 @@
 # Debian's zfsutils-linux ships zfs-load-key.service masked (symlinked to
 # /dev/null at the package level), so file:// keys are NOT loaded at boot
 # and encrypted datasets stay locked/unmounted. Ship a real unit in /etc
-# (which takes precedence over the package mask) that loads all keys
-# before zfs-mount.service runs. Discovered via Hercules reboot test
-# 2026-06-12 — without this, every reboot needs a manual `zfs load-key -a`.
+# (which takes precedence over the package mask) that loads keys before
+# zfs-mount.service runs. Discovered via Hercules reboot test 2026-06-12 —
+# without this, every reboot needs a manual `zfs load-key -a`.
+# The helper loads file:// keys only: `load-key -a` exits 255 on datasets
+# whose keys are absent by design (raw-received blind replicas), leaving a
+# red FAILED unit every boot on syncoid destinations like rdu-nas.
+- name: Install zfs-load-file-keys helper
+  ansible.builtin.copy:
+    src: zfs-load-file-keys.sh
+    dest: /usr/local/sbin/zfs-load-file-keys.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: >-
+    zfs_pool_encryption is defined
+    or (zfs_datasets | selectattr('encryption', 'defined') | list | length > 0)
+
 - name: Install zfs-load-key boot unit (encrypted datasets/pool)
   ansible.builtin.copy:
     content: |
@@ -355,7 +369,7 @@
       [Service]
       Type=oneshot
       RemainAfterExit=yes
-      ExecStart=/usr/sbin/zfs load-key -a
+      ExecStart=/usr/local/sbin/zfs-load-file-keys.sh
 
       [Install]
       WantedBy=zfs-mount.service

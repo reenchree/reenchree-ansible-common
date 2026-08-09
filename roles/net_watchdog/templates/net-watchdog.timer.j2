@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic network self-healing watchdog
+
+[Timer]
+OnBootSec={{ net_watchdog_boot_delay_seconds }}
+OnUnitActiveSec={{ net_watchdog_interval_seconds }}
+AccuracySec=10s
+Unit=net-watchdog.service
+
+[Install]
+WantedBy=timers.target
