@@ -5,7 +5,7 @@ Shared Ansible collection (`reenchree.common`, namespace `reenchree`, name `comm
 ## Distribution
 
 - **Not published to Galaxy.** Consumers pull from `https://github.com/reenchree/reenchree-ansible-common.git` as a `type: git` collection.
-- Downstream repos pin an **annotated git tag** (e.g. `version: v1.8.0`) in `requirements.yml`; bumping the version downstream = bump the tag. `galaxy.yml` `version:` (`1.8.0`) is kept in lockstep with the tag. (Older consumers pinned a raw commit SHA — being migrated to tags; rdu-nas still lags on the pre-1.8.0 SHA.)
+- Downstream repos pin an **annotated git tag** (e.g. `version: v1.10.0`) in `requirements.yml`; bumping the version downstream = bump the tag. `galaxy.yml` `version:` is kept in lockstep with the tag. (SHA→tag migration complete: rdu-nas re-pinned to v1.10.0 on 2026-08-09.)
 - Collection deps (declared in `galaxy.yml`): `community.general >=7.0.0`, `ansible.posix >=1.5.0`. Downstream repos must also have these installed.
 
 ## Roles
@@ -31,7 +31,7 @@ The `nut_client` side is **not** in this collection — downstream repos pull `g
 | repo | roles used |
 |---|---|
 | `sea-hercules-ansible` | `base`, `zfs`, `sanoid`, `node_exporter`, `smartctl_exporter`, `zfs_exporter`, `ops` |
-| `rdu-nas-ansible` | `base`, `zfs`, `sanoid`, `node_exporter`, `smartctl_exporter`, `zfs_exporter` (ops-wrapper conversion + tag re-pin pending its own lane) |
+| `rdu-nas-ansible` | `base`, `zfs`, `sanoid`, `node_exporter`, `smartctl_exporter`, `zfs_exporter`, `net_watchdog` (the first consumer; dry-run soak since 2026-08-09). Pinned v1.10.0; ops-wrapper conversion still pending its own lane |
 | `sea-pegasus-ansible` | `node_exporter`, `smartctl_exporter`, `zfs_exporter` (no `base`/`zfs`/`sanoid` — pool managed elsewhere) |
 | `sea-misc-ansible` | `nut_server`, `nut_exporter` (the only consumer of both), `ops` |
 | `sea-k8s-ansible` | **does not consume this collection** — uses `k3s-io/k3s-ansible` directly |
