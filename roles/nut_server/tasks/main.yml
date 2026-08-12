@@ -29,6 +29,7 @@
     mode: "0640"
   notify:
     - restart nut-driver-enumerator
+    - restart nut-driver instances
     - restart nut-server
 
 - name: Configure upsd.conf

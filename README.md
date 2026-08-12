@@ -82,7 +82,7 @@ Installs and configures NUT (Network UPS Tools) in `netserver` mode — `upsd` l
 - `nut_server_mode`: `netserver`
 - `nut_server_listen_address`: `0.0.0.0`, `nut_server_listen_port`: `3493`
 - `nut_server_maxretry`: `3`
-- `nut_server_upses`: list of UPS dicts. Required keys: `name`, `driver`. Common optional keys: `port`, `vendorid`, `productid`, `serial`, `description`, `pollinterval`. Any other key is rendered verbatim as `key = value` for driver-specific options.
+- `nut_server_upses`: list of UPS dicts. Required keys: `name`, `driver`. Common optional keys: `port`, `vendorid`, `productid`, `serial`, `description`, `pollinterval`. Any other key is rendered verbatim as `key = value` for driver-specific options; a null value renders the bare key (flag syntax, e.g. `ignorelb:` → `ignorelb`). A ups.conf change restarts the `nut-driver@<ups>` instances — required because NUT applies `ignorelb`/`override.*` only on a full driver restart, never on SIGHUP.
 - `nut_server_users`: list of user dicts. Required keys: `name`, `password`. Optional: `actions` (list), `instcmds` (list), `upsmon` (`primary` | `secondary`).
 - `nut_server_upsmon_*`: timing knobs (POLLFREQ, HOSTSYNC, DEADTIME, etc.) and `nut_server_upsmon_monitor` (`ups`, `powervalue`, `user`, `password`, `type`) for the local MONITOR line. The MONITOR identity must correspond to one of the entries in `nut_server_users`.
 - `nut_server_udev_rules`: list of `{vendorid, productid, comment?}`. Empty (default) means the role does not write `/etc/udev/rules.d/99-nut-ups.rules` and any existing rule is left in place.

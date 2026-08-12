@@ -15,6 +15,15 @@
     state: restarted
     daemon_reload: true
 
+# Full restart, not SIGHUP: ignorelb/override.* are skipped on driver reload (NUT #3377)
+- name: restart nut-driver instances
+  ansible.builtin.systemd:
+    name: "nut-driver@{{ item.name }}.service"
+    state: restarted
+  loop: "{{ nut_server_upses }}"
+  loop_control:
+    label: "{{ item.name }}"
+
 - name: restart nut-server
   ansible.builtin.systemd:
     name: nut-server
