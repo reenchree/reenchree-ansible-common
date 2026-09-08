@@ -3,9 +3,10 @@
 All notable changes to the reenchree.common collection. One line per
 released version; newest release detailed. Consumers pin the matching git tag.
 
-## 1.11.0
-- feat(nut_server): ups.conf extra keys with a null value now render as bare flags (e.g. `ignorelb:` → `ignorelb`) — needed for driver-side LB synthesis (`ignorelb` + `override.battery.*`, the tiered-shutdown mechanism in sea-misc).
-- fix(nut_server): a ups.conf change now restarts the `nut-driver@<ups>` instances (new `restart nut-driver instances` handler). Previously only the enumerator + upsd restarted, so stanza edits never reached a running driver — and SIGHUP explicitly skips `ignorelb`/`override.*` (NUT #3377), so a full driver restart is the only correct apply path.
+## 1.11.1
+- fix(zfs): `Create ZFS datasets` no longer prints dataset encryption keys. The loop iterated the raw `zfs_datasets` items (which embed `encryption.key_content`), so the key appeared in cleartext on every ok/changed line and in the full result dump on a failed item. The task now loops over a key-stripped copy (built by a `no_log` `set_fact`) with a `loop_control.label`, covering both success and failure output; failures stay readable. Existing Semaphore task logs from earlier runs still contain the key — purge or rotate as policy dictates.
+
+## 1.11.0 — feat(nut_server): null-valued ups.conf extra keys render as bare flags (`ignorelb`); fix(nut_server): ups.conf changes restart the `nut-driver@<ups>` instances (SIGHUP skips `ignorelb`/`override.*`).
 
 ## 1.10.0 — feat: net_watchdog role (Wi-Fi/WG self-healing, rdu-nas); fix(zfs): file://-only zfs-load-key helper (blind replicas broke `load-key -a`).
 

@@ -177,6 +177,23 @@
   register: zfs_existing_datasets
   changed_when: false
 
+# Loop over a copy with key_content stripped: loop items are echoed on ok/
+# changed lines and dumped in full when an item fails (e.g. a quota shrink
+# below used space), so the raw list would print the dataset key into logs.
+- name: Build key-free dataset list for the create loop
+  ansible.builtin.set_fact:
+    _zfs_datasets_safe: >-
+      {{ (_zfs_datasets_safe | default([])) + [
+           (item | combine({'encryption': (item.encryption | dict2items
+                                            | rejectattr('key', 'equalto', 'key_content')
+                                            | items2dict)}))
+           if item.encryption is defined else item
+         ] }}
+  loop: "{{ zfs_datasets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+
 - name: Create ZFS datasets
   community.general.zfs:
     name: "{{ zfs_pool_name }}/{{ item.name }}"
@@ -201,7 +218,9 @@
             else {}
           )
       }}
-  loop: "{{ zfs_datasets }}"
+  loop: "{{ _zfs_datasets_safe | default([]) }}"
+  loop_control:
+    label: "{{ zfs_pool_name }}/{{ item.name }}"
 
 - name: Create ZFS scrub service
   ansible.builtin.copy:
