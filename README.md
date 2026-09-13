@@ -18,7 +18,8 @@ Creates and configures a ZFS pool plus its datasets. Enables the contrib reposit
 **Default variables:**
 - `zfs_pool_name`: `tank`
 - `zfs_pool_type`: `raidz2` (also accepts `mirror`, `stripe`, `raidz`, `raidz3`)
-- `zfs_disks`: list of `/dev/disk/by-id/...` paths (required)
+- `zfs_disks`: list of `/dev/disk/by-id/...` paths (required). Consulted **only at pool creation**; once the pool is imported it is documentation.
+- `zfs_allow_pool_create`: `false`. `zpool create` is opt-in: a non-imported pool fails the run (recover with `zpool import -d /dev/disk/by-id <pool>`). Set `true` once for a genuinely new host. A second guard refuses to create over disks that `blkid` reports as `zfs_member`.
 - `zfs_arc_max_gb`: `8`
 - `zfs_health_metrics_enabled`: `true`. Installs `jq` + `/usr/local/bin/zfs-health-metrics.sh` and a systemd timer that parses `zpool status -j` and writes per-vdev `zfs_vdev_{read,write,checksum}_errors` / `zfs_vdev_slow_ios` plus `zfs_pool_error_count` / `zfs_pool_scan_errors` / `zfs_pool_scan_start_timestamp_seconds` into the node_exporter textfile collector dir (scraped on :9100). Fills the gap left by `pdf/zfs_exporter`, which exports only `zfs_pool_health`. Alert rules live in sea-k8s-flux `custom-alerts.yaml` (`zfs-health` group, `job="bare-metal-node"`). Requires zfsutils >= 2.3 for `zpool status -j`.
 - `zfs_health_metrics_dir`: `/var/lib/node_exporter/textfile_collector` (must match `node_exporter_textfile_directory`)

@@ -54,6 +54,21 @@
   register: zpool_check
   changed_when: false
   failed_when: false
+  check_mode: false  # probe must run under --check or every `when` below errors
+
+# Not-imported is indistinguishable from never-existed to `zpool list`. Refuse
+# to create unless explicitly allowed; the recovery for an existing pool is an
+# import, never a create.
+- name: Refuse to create a pool unless explicitly allowed
+  ansible.builtin.fail:
+    msg: >-
+      ZFS pool '{{ zfs_pool_name }}' is not imported and zfs_allow_pool_create
+      is false. If the pool exists, import it:
+      `zpool import -d /dev/disk/by-id {{ zfs_pool_name }}` then re-run.
+      Only for a genuinely new host set zfs_allow_pool_create=true.
+  when:
+    - zpool_check.rc != 0
+    - not zfs_allow_pool_create
 
 - name: Validate ZFS disk configuration
   vars:
@@ -88,6 +103,26 @@
   when:
     - zpool_check.rc != 0
     - not item.stat.exists
+
+# Second layer behind ZFS's own "is part of exported pool" refusal.
+- name: Probe configured disks for existing ZFS labels
+  ansible.builtin.shell:
+    cmd: blkid -o value -s TYPE {{ item }} {{ item }}-part1 2>/dev/null || true
+  register: zfs_disk_blkid
+  loop: "{{ zfs_disks }}"
+  changed_when: false
+  check_mode: false
+  when: zpool_check.rc != 0
+
+- name: Refuse to create over disks that already carry ZFS labels
+  ansible.builtin.fail:
+    msg: "{{ item.item }} already holds a ZFS label (zfs_member); import it, do not create."
+  loop: "{{ zfs_disk_blkid.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default(item) }}"
+  when:
+    - zpool_check.rc != 0
+    - "'zfs_member' in (item.stdout | default(''))"
 
 # Pool-level encryption keyfile must exist before `zpool create` reads it.
 # Done in the same `when: zpool_check.rc != 0` band as pool creation so it
@@ -176,6 +211,7 @@
     cmd: zfs list -H -o name
   register: zfs_existing_datasets
   changed_when: false
+  check_mode: false  # read-only; skipping it makes --check report every dataset as new
 
 # Loop over a copy with key_content stripped: loop items are echoed on ok/
 # changed lines and dumped in full when an item fails (e.g. a quota shrink

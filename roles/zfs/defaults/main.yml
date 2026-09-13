@@ -2,6 +2,10 @@
 zfs_pool_name: tank
 zfs_pool_type: raidz2
 zfs_disks: []
+# `zfs_disks` is consulted ONLY when the pool is created. Pool creation is
+# opt-in: an un-imported pool (e.g. after a controller swap) fails the run
+# instead of racing to `zpool create`. Set true once for a genuinely new host.
+zfs_allow_pool_create: false
 zfs_arc_max_gb: 8
 zfs_datasets: []
 

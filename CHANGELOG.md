@@ -3,8 +3,12 @@
 All notable changes to the reenchree.common collection. One line per
 released version; newest release detailed. Consumers pin the matching git tag.
 
-## 1.11.1
-- fix(zfs): `Create ZFS datasets` no longer prints dataset encryption keys. The loop iterated the raw `zfs_datasets` items (which embed `encryption.key_content`), so the key appeared in cleartext on every ok/changed line and in the full result dump on a failed item. The task now loops over a key-stripped copy (built by a `no_log` `set_fact`) with a `loop_control.label`, covering both success and failure output; failures stay readable. Existing Semaphore task logs from earlier runs still contain the key — purge or rotate as policy dictates.
+## 1.12.0
+- feat(zfs): `zpool create` is now **opt-in** via `zfs_allow_pool_create` (default `false`). `zpool list` cannot tell "not imported" from "never existed", so after a disk-controller swap (hercules → E208i-a, 2026-09-12) an un-imported pool plus resolvable `zfs_disks` paths would have marched the role straight to `zpool create` (unencrypted on per-dataset-crypto hosts), leaving only ZFS's own label refusal as the guard. Now a non-imported pool fails the run with the import recipe. `zfs_disks` is documented as create-time only.
+- feat(zfs): second guard inside the create band — `blkid` reporting `zfs_member` on any configured disk (or its `-part1`) fails the run.
+- fix(zfs): the `zpool list` probe runs under `--check` (`check_mode: false`); previously every check-mode run errored on the undefined `.rc`.
+
+## 1.11.1 — fix(zfs): `Create ZFS datasets` no longer prints dataset encryption keys (key-stripped loop copy + `loop_control.label`); purge/rotate older Semaphore logs as policy dictates.
 
 ## 1.11.0 — feat(nut_server): null-valued ups.conf extra keys render as bare flags (`ignorelb`); fix(nut_server): ups.conf changes restart the `nut-driver@<ups>` instances (SIGHUP skips `ignorelb`/`override.*`).
 
