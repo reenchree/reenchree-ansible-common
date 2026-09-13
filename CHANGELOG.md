@@ -6,7 +6,7 @@ released version; newest release detailed. Consumers pin the matching git tag.
 ## 1.12.0
 - feat(zfs): `zpool create` is now **opt-in** via `zfs_allow_pool_create` (default `false`). `zpool list` cannot tell "not imported" from "never existed", so after a disk-controller swap (hercules → E208i-a, 2026-09-12) an un-imported pool plus resolvable `zfs_disks` paths would have marched the role straight to `zpool create` (unencrypted on per-dataset-crypto hosts), leaving only ZFS's own label refusal as the guard. Now a non-imported pool fails the run with the import recipe. `zfs_disks` is documented as create-time only.
 - feat(zfs): second guard inside the create band — `blkid` reporting `zfs_member` on any configured disk (or its `-part1`) fails the run.
-- fix(zfs): the `zpool list` probe runs under `--check` (`check_mode: false`); previously every check-mode run errored on the undefined `.rc`.
+- fix(zfs): the `zpool list` and `zfs list` probes run under `--check` (`check_mode: false`); previously every check-mode run errored on the undefined `.rc` and reported every dataset as new.
 
 ## 1.11.1 — fix(zfs): `Create ZFS datasets` no longer prints dataset encryption keys (key-stripped loop copy + `loop_control.label`); purge/rotate older Semaphore logs as policy dictates.
 
