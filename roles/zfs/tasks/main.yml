@@ -56,6 +56,44 @@
   failed_when: false
   check_mode: false  # probe must run under --check or every `when` below errors
 
+# Rebuild-onto-existing-disks path: labelled disks + no imported pool means
+# the pool exists but is not imported (fresh OS, controller swap). Import it
+# (-N: no mount; keys are loaded and datasets mounted at the end of the role).
+- name: Probe configured disks for existing ZFS labels
+  ansible.builtin.shell:
+    cmd: blkid -o value -s TYPE {{ item }} {{ item }}-part1 2>/dev/null || true
+  register: zfs_disk_blkid
+  loop: "{{ zfs_disks }}"
+  changed_when: false
+  check_mode: false
+  when: zpool_check.rc != 0
+
+- name: Import existing pool from labelled disks
+  ansible.builtin.command:
+    cmd: zpool import -d /dev/disk/by-id -N {{ zfs_pool_name }}
+  register: zfs_pool_imported_now
+  changed_when: true
+  when:
+    - zpool_check.rc != 0
+    - zfs_import_existing
+    - zfs_disk_blkid.results | default([]) | map(attribute='stdout', default='') | select('search', 'zfs_member') | list | length > 0
+
+- name: Re-check pool after import
+  ansible.builtin.command:
+    cmd: zpool list {{ zfs_pool_name }}
+  register: zfs_pool_recheck
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: zfs_pool_imported_now is changed
+
+# Only overwrite the probe when a re-check actually ran (a skipped task result
+# carries no rc and would break every `zpool_check.rc` conditional below).
+- name: Adopt the post-import pool state
+  ansible.builtin.set_fact:
+    zpool_check: "{{ zfs_pool_recheck }}"
+  when: zfs_pool_recheck is not skipped
+
 # Not-imported is indistinguishable from never-existed to `zpool list`. Refuse
 # to create unless explicitly allowed; the recovery for an existing pool is an
 # import, never a create.
@@ -104,16 +142,8 @@
     - zpool_check.rc != 0
     - not item.stat.exists
 
-# Second layer behind ZFS's own "is part of exported pool" refusal.
-- name: Probe configured disks for existing ZFS labels
-  ansible.builtin.shell:
-    cmd: blkid -o value -s TYPE {{ item }} {{ item }}-part1 2>/dev/null || true
-  register: zfs_disk_blkid
-  loop: "{{ zfs_disks }}"
-  changed_when: false
-  check_mode: false
-  when: zpool_check.rc != 0
-
+# Second layer behind ZFS's own "is part of exported pool" refusal: labelled
+# disks that did not import must never be created over.
 - name: Refuse to create over disks that already carry ZFS labels
   ansible.builtin.fail:
     msg: "{{ item.item }} already holds a ZFS label (zfs_member); import it, do not create."
@@ -445,3 +475,18 @@
   when: >-
     zfs_pool_encryption is defined
     or (zfs_datasets | selectattr('encryption', 'defined') | list | length > 0)
+
+# After an in-role import (-N) bring the datasets up the same way boot does.
+- name: Load file:// keys after in-role import
+  ansible.builtin.command:
+    cmd: /usr/local/sbin/zfs-load-file-keys.sh
+  changed_when: true
+  when:
+    - zfs_pool_imported_now is changed
+    - zfs_pool_encryption is defined or (zfs_datasets | selectattr('encryption', 'defined') | list | length > 0)
+
+- name: Mount all datasets after in-role import
+  ansible.builtin.command:
+    cmd: zfs mount -a
+  changed_when: true
+  when: zfs_pool_imported_now is changed

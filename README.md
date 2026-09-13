@@ -9,6 +9,7 @@ Shared Ansible collection for common roles used across the reenchree homelab inf
 Installs baseline system packages (smartmontools, lm-sensors, htop, iotop-c, tmux, sudo, openresolv), grants sudo to `ansible_user`, and configures `smartd` to monitor all disks with sensible NVMe vs spinning thresholds.
 
 **Default variables:**
+- `base_efi_removable_fallback`: `true`. On UEFI hosts with grub, keep a fallback loader at `\EFI\BOOT\BOOTX64.EFI` (debconf `grub2/force_efi_extra_removable` + one `grub-install --force-extra-removable`) so an NVRAM reset still boots.
 - `base_packages`: list of apt packages installed (override to add more)
 
 ### `reenchree.common.zfs`
@@ -19,6 +20,7 @@ Creates and configures a ZFS pool plus its datasets. Enables the contrib reposit
 - `zfs_pool_name`: `tank`
 - `zfs_pool_type`: `raidz2` (also accepts `mirror`, `stripe`, `raidz`, `raidz3`)
 - `zfs_disks`: list of `/dev/disk/by-id/...` paths (required). Consulted **only at pool creation**; once the pool is imported it is documentation.
+- `zfs_import_existing`: `true`. If the pool is not imported but the configured disks carry ZFS labels, import it (`zpool import -d /dev/disk/by-id -N`), then load file:// keys and `zfs mount -a` at the end of the role — the rebuild-onto-existing-disks path.
 - `zfs_allow_pool_create`: `false`. `zpool create` is opt-in: a non-imported pool fails the run (recover with `zpool import -d /dev/disk/by-id <pool>`). Set `true` once for a genuinely new host. A second guard refuses to create over disks that `blkid` reports as `zfs_member`.
 - `zfs_arc_max_gb`: `8`
 - `zfs_health_metrics_enabled`: `true`. Installs `jq` + `/usr/local/bin/zfs-health-metrics.sh` and a systemd timer that parses `zpool status -j` and writes per-vdev `zfs_vdev_{read,write,checksum}_errors` / `zfs_vdev_slow_ios` plus `zfs_pool_error_count` / `zfs_pool_scan_errors` / `zfs_pool_scan_start_timestamp_seconds` into the node_exporter textfile collector dir (scraped on :9100). Fills the gap left by `pdf/zfs_exporter`, which exports only `zfs_pool_health`. Alert rules live in sea-k8s-flux `custom-alerts.yaml` (`zfs-health` group, `job="bare-metal-node"`). Requires zfsutils >= 2.3 for `zpool status -j`.

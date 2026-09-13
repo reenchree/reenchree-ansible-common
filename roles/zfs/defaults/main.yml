@@ -6,6 +6,9 @@ zfs_disks: []
 # opt-in: an un-imported pool (e.g. after a controller swap) fails the run
 # instead of racing to `zpool create`. Set true once for a genuinely new host.
 zfs_allow_pool_create: false
+# Import (never create) when the configured disks already carry ZFS labels —
+# the rebuild-onto-existing-disks path (fresh OS, controller swap).
+zfs_import_existing: true
 zfs_arc_max_gb: 8
 zfs_datasets: []
 

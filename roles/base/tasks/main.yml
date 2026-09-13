@@ -30,3 +30,35 @@
     name: smartd
     enabled: true
     state: started
+
+- name: Stat EFI system partition and grub-install
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: base_efi_stat
+  loop:
+    - /boot/efi/EFI
+    - /usr/sbin/grub-install
+
+- name: EFI removable-media fallback loader
+  when:
+    - base_efi_removable_fallback
+    - base_efi_stat.results | map(attribute='stat.exists') | list == [true, true]
+  block:
+    - name: Keep the removable-media fallback across grub updates (debconf)
+      ansible.builtin.debconf:
+        name: "grub-efi-{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}"
+        question: grub2/force_efi_extra_removable
+        vtype: boolean
+        value: "true"
+      register: base_efi_debconf
+
+    - name: Stat removable-media fallback loader
+      ansible.builtin.stat:
+        path: /boot/efi/EFI/BOOT/BOOTX64.EFI
+      register: base_efi_fallback
+
+    - name: Install removable-media fallback loader
+      ansible.builtin.command:
+        cmd: grub-install --force-extra-removable
+      changed_when: true
+      when: base_efi_debconf is changed or not base_efi_fallback.stat.exists

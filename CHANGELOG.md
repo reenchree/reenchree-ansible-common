@@ -3,10 +3,12 @@
 All notable changes to the reenchree.common collection. One line per
 released version; newest release detailed. Consumers pin the matching git tag.
 
-## 1.12.0
-- feat(zfs): `zpool create` is now **opt-in** via `zfs_allow_pool_create` (default `false`). `zpool list` cannot tell "not imported" from "never existed", so after a disk-controller swap (hercules → E208i-a, 2026-09-12) an un-imported pool plus resolvable `zfs_disks` paths would have marched the role straight to `zpool create` (unencrypted on per-dataset-crypto hosts), leaving only ZFS's own label refusal as the guard. Now a non-imported pool fails the run with the import recipe. `zfs_disks` is documented as create-time only.
-- feat(zfs): second guard inside the create band — `blkid` reporting `zfs_member` on any configured disk (or its `-part1`) fails the run.
-- fix(zfs): the `zpool list` and `zfs list` probes run under `--check` (`check_mode: false`); previously every check-mode run errored on the undefined `.rc` and reported every dataset as new.
+## 1.13.0
+- feat(zfs): **rebuild-onto-existing-disks path.** When the pool is not imported but the configured disks carry ZFS labels, the role now runs `zpool import -d /dev/disk/by-id -N <pool>` (`zfs_import_existing`, default `true`), re-probes, and at the end loads file:// keys + `zfs mount -a`. A fresh OS install or a controller swap converges without a manual import; creation stays opt-in and labelled disks are never created over.
+- feat(base): **EFI removable-media fallback loader** (`base_efi_removable_fallback`, default `true`): on UEFI hosts with grub, sets the `grub2/force_efi_extra_removable` debconf answer and runs `grub-install --force-extra-removable` once, so a firmware NVRAM reset (dead CMOS cell, ROM defaults) still boots unattended. Lesson from hercules 2026-09-12.
+- fix(zfs): the post-import re-check no longer clobbers the pool probe when skipped.
+
+## 1.12.0 — feat(zfs): `zpool create` opt-in via `zfs_allow_pool_create` (non-imported pool fails the run); `zfs_member` label guard; `zpool list`/`zfs list` probes run under `--check`.
 
 ## 1.11.1 — fix(zfs): `Create ZFS datasets` no longer prints dataset encryption keys (key-stripped loop copy + `loop_control.label`); purge/rotate older Semaphore logs as policy dictates.
 
