@@ -3,6 +3,9 @@
 All notable changes to the reenchree.common collection. One line per
 released version; newest release detailed. Consumers pin the matching git tag.
 
+## 1.14.0
+- feat(poe_lldp): new role — runs `lldpd` on PoE-powered Pis advertising an 802.3at Power-via-MDI TLV (Class 4, Type 2, 25.5 W requested). A Cisco Catalyst 2960X leaves a Class 4 PD at 15.4 W until it asks over CDP/LLDP (no 2-event classification on IOS 15.2(4)E9), and the Pi HATs cannot ask — worker2/worker3 hit `ILPOWER-3-CONTROLLER_PORT_ERR … Imax` power cuts four times after the 2026-09-13 rack move. With the TLV the switch raises the port to 30 W live, no port config change or power drop. `poe_lldp_interface` doubles as lldpd's interface pattern so LLDP stays off cni/veth interfaces.
+
 ## 1.13.0
 - feat(zfs): **rebuild-onto-existing-disks path.** When the pool is not imported but the configured disks carry ZFS labels, the role now runs `zpool import -d /dev/disk/by-id -N <pool>` (`zfs_import_existing`, default `true`), re-probes, and at the end loads file:// keys + `zfs mount -a`. A fresh OS install or a controller swap converges without a manual import; creation stays opt-in and labelled disks are never created over.
 - feat(base): **EFI removable-media fallback loader** (`base_efi_removable_fallback`, default `true`): on UEFI hosts with grub, sets the `grub2/force_efi_extra_removable` debconf answer and runs `grub-install --force-extra-removable` once, so a firmware NVRAM reset (dead CMOS cell, ROM defaults) still boots unattended. Lesson from hercules 2026-09-12.

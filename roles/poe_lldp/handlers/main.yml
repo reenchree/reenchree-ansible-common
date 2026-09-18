@@ -1,0 +1,5 @@
+---
+- name: restart lldpd
+  ansible.builtin.systemd:
+    name: lldpd
+    state: restarted

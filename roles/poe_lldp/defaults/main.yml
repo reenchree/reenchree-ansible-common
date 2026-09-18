@@ -1,0 +1,13 @@
+---
+# Interface the PoE PSE is on. Also used as lldpd's interface pattern so
+# LLDP never runs on veth/flannel/cni interfaces on k8s nodes.
+poe_lldp_interface: eth0
+# 802.3at Power-via-MDI TLV values (milliwatts). 25.5 W is the Type 2 PD
+# maximum; a Cisco Catalyst answers it by raising the port from the 15.4 W
+# Class 4 default to 30 W at the PSE.
+poe_lldp_requested_mw: 25500
+poe_lldp_allocated_mw: 25500
+poe_lldp_class: class-4
+poe_lldp_type: 2
+poe_lldp_priority: low
+poe_lldp_tx_interval: 30

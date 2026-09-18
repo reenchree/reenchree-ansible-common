@@ -1,0 +1,25 @@
+---
+- name: Install lldpd
+  ansible.builtin.apt:
+    name: lldpd
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    update_cache_retries: 10
+    update_cache_retry_max_delay: 60
+    lock_timeout: 300
+
+- name: Configure PoE power request
+  ansible.builtin.template:
+    src: poe.conf.j2
+    dest: /etc/lldpd.d/poe.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart lldpd
+
+- name: Enable and start lldpd
+  ansible.builtin.systemd:
+    name: lldpd
+    enabled: true
+    state: started

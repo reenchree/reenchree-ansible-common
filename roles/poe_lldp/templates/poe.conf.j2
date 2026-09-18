@@ -1,0 +1,6 @@
+# {{ ansible_managed }}
+# lldpcli commands read by lldpd at start. Asks the PoE switch for PoE+ power
+# over the 802.3at Power-via-MDI TLV; the HAT itself cannot negotiate.
+configure system interface pattern {{ poe_lldp_interface }}
+configure lldp tx-interval {{ poe_lldp_tx_interval }}
+configure ports {{ poe_lldp_interface }} dot3 power pd supported enabled powerpairs signal class {{ poe_lldp_class }} type {{ poe_lldp_type }} source both priority {{ poe_lldp_priority }} requested {{ poe_lldp_requested_mw }} allocated {{ poe_lldp_allocated_mw }}
