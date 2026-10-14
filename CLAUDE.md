@@ -33,7 +33,6 @@ The `nut_client` side is **not** in this collection — downstream repos pull `g
 |---|---|
 | `sea-hercules-ansible` | `base`, `zfs`, `sanoid`, `node_exporter`, `smartctl_exporter`, `zfs_exporter`, `ops`. Pinned v1.13.0 (2026-09-13; import-existing + create guard live, zfs-load-file-keys boot helper verified on the 2026-09-12 reboots) |
 | `rdu-nas-ansible` | `base`, `zfs`, `sanoid`, `node_exporter`, `smartctl_exporter`, `zfs_exporter`, `net_watchdog` (the first consumer; ARMED 2026-08-09, fault-injection verified). Pinned v1.13.0 (2026-09-13, applies on its next Semaphore run); ops-wrapper conversion still pending its own lane |
-| `sea-pegasus-ansible` | `node_exporter`, `smartctl_exporter`, `zfs_exporter` (no `base`/`zfs`/`sanoid` — pool managed elsewhere) |
 | `sea-misc-ansible` | `nut_server`, `nut_exporter` (the only consumer of both), `ops`, `poe_lldp` (server-rack-pi). Pinned v1.14.0 (2026-09-18) |
 | `sea-k8s-ansible` | **does not consume this collection** — uses `k3s-io/k3s-ansible` directly. Carries a verbatim copy of `poe_lldp` (2026-09-18) — keep the two in sync |
 
